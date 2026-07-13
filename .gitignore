@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Next.js build outputs
+.next/
+out/
+build/
+dist/
+
+# Environmental variables / secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# IDE / Editor configurations
+.idea/
+.vscode/
+*.sw?
+*.suo
+*.sln
+
+# OS metadata
+.DS_Store
+Thumbs.db
