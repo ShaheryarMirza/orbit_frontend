@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore, Product } from "@/store/cartStore";
-import api from "@/lib/api";
+import api, { API_BASE_URL } from "@/lib/api";
 import {
   Loader2,
   Search,
@@ -348,11 +348,11 @@ export default function ShopCatalog() {
                       {/* Product Image */}
                       <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden border-b border-gray-100 relative">
                         {product.image_url ? (
-                          <img
-                            src={"http://127.0.0.1:8000" + product.image_url}
-                            alt={product.product_name}
-                            className="w-full h-full object-cover"
-                          />
+                           <img
+                             src={API_BASE_URL + product.image_url}
+                             alt={product.product_name}
+                             className="w-full h-full object-cover"
+                           />
                         ) : (
                           <div className="flex flex-col items-center justify-center text-gray-400 space-y-2">
                             <ShoppingBag className="w-12 h-12 stroke-[1.5]" />

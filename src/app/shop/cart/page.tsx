@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
-import api from "@/lib/api";
+import api, { API_BASE_URL } from "@/lib/api";
 import {
   Loader2,
   Trash2,
@@ -170,7 +170,7 @@ export default function CartPage() {
                       <div className="w-16 h-16 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shrink-0 flex items-center justify-center text-gray-400 font-mono text-xs">
                         {item.product.image_url ? (
                           <img
-                            src={"http://127.0.0.1:8000" + item.product.image_url}
+                            src={API_BASE_URL + item.product.image_url}
                             alt={item.product.product_name}
                             className="w-full h-full object-cover"
                           />

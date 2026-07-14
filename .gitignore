@@ -6,6 +6,12 @@ node_modules/
 out/
 build/
 dist/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Agent Instructions / AI Configs
+AGENTS.md
+CLAUDE.md
 
 # Environmental variables / secrets
 .env

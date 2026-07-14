@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
-import api from "@/lib/api";
+import api, { API_BASE_URL } from "@/lib/api";
 import {
   Loader2,
   Plus,
@@ -337,7 +337,7 @@ export default function AdminProductsPage() {
                           <div className="relative group/img w-12 h-12 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden flex items-center justify-center text-slate-400">
                             {product.image_url ? (
                               <img
-                                src={"http://127.0.0.1:8000" + product.image_url}
+                                src={API_BASE_URL + product.image_url}
                                 alt={product.product_name}
                                 className="w-full h-full object-cover"
                               />
