@@ -36,9 +36,7 @@ export default function LoginPage() {
 
       // 3. Save to auth state and redirect
       loginAction(access_token, user);
-      if (user.must_change_password) {
-        router.push("/settings/change-password");
-      } else if (user.role === "admin") {
+      if (user.role === "admin") {
         router.push("/admin/dashboard");
       } else {
         router.push("/");

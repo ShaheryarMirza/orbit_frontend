@@ -20,13 +20,6 @@ export default function Navbar() {
     initialize();
   }, [initialize]);
 
-  // Intercept and redirect if must_change_password is true
-  useEffect(() => {
-    if (isAuthenticated && user?.must_change_password && pathname !== "/settings/change-password") {
-      router.push("/settings/change-password");
-    }
-  }, [isAuthenticated, user, pathname, router]);
-
   const handleLogout = () => {
     logout();
     router.push("/login");
@@ -47,7 +40,7 @@ export default function Navbar() {
             </Link>
 
             {/* Navigation links based on role */}
-            {isAuthenticated && user && !user.must_change_password && (
+            {isAuthenticated && user && (
               <div className="hidden sm:flex items-center gap-5 ml-4 border-l border-gray-200 pl-5">
                 <Link
                   href="/orders"
@@ -153,6 +146,15 @@ export default function Navbar() {
                     {user.role}
                   </span>
                 </div>
+                {user.role === "shop_owner" && (
+                  <Link
+                    href="/settings/profile"
+                    className="flex items-center gap-1.5 text-sm font-semibold text-slate-650 hover:text-teal-600 transition-colors py-1.5 px-2.5 rounded-lg hover:bg-gray-50 cursor-pointer"
+                  >
+                    <UserIcon className="w-4 h-4 text-teal-600" />
+                    My Profile
+                  </Link>
+                )}
                 <Link
                   href="/settings/change-password"
                   className="flex items-center gap-1.5 text-sm font-semibold text-slate-650 hover:text-teal-600 transition-colors py-1.5 px-2.5 rounded-lg hover:bg-gray-50 cursor-pointer"

@@ -116,16 +116,14 @@ export default function ChangePasswordPage() {
     <div className="flex-1 bg-gray-50 text-slate-800 min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md mx-auto space-y-6">
         
-        {/* Back navigation button (only show if not forced to change password) */}
-        {!forcePasswordChange && (
-          <Link
-            href={user.role === "admin" ? "/admin/dashboard" : user.role === "salesperson" ? "/sales/dashboard" : "/shop"}
-            className="inline-flex items-center gap-1.5 text-xs text-slate-505 hover:text-teal-600 font-semibold uppercase tracking-wider transition-colors mb-2"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Dashboard
-          </Link>
-        )}
+        {/* Back navigation button */}
+        <Link
+          href={user.role === "admin" ? "/admin/dashboard" : user.role === "salesperson" ? "/sales/dashboard" : "/shop"}
+          className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-teal-650 font-semibold uppercase tracking-wider transition-colors mb-2"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Dashboard
+        </Link>
 
         {/* Card Header & Body */}
         <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm space-y-6 relative overflow-hidden">
