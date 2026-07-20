@@ -41,6 +41,7 @@ interface Shop {
   sage_sync_status: "pending" | "synced" | "failed";
   created_at: string;
   updated_at: string;
+  email?: string;
 }
 
 interface ImportSummary {
@@ -435,7 +436,7 @@ export default function AdminDashboard() {
             placeholder="Search shops by name, account ref, or city..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-10 py-3.5 border border-gray-200 bg-white placeholder-slate-405 text-slate-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all text-sm shadow-sm"
+            className="w-full pl-11 pr-10 py-3.5 border border-gray-200 bg-white placeholder-slate-400 text-slate-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all text-sm shadow-sm"
           />
           {searchQuery && (
             <button
@@ -506,7 +507,7 @@ export default function AdminDashboard() {
                 <h3 className="text-lg font-bold text-slate-800">
                   {searchQuery ? "No Matching Shops Found" : "No Shops Registered"}
                 </h3>
-                <p className="text-slate-505 text-sm max-w-sm mt-1 font-medium">
+                <p className="text-slate-500 text-sm max-w-sm mt-1 font-medium">
                   {searchQuery
                     ? "Try adjusting your search terms or clear the query to see all registrations."
                     : "There are currently no shop registrations in the database."
@@ -589,7 +590,7 @@ export default function AdminDashboard() {
                 <h3 className="text-lg font-bold text-slate-800">
                   {searchQuery ? "No Matching Pending Approvals" : "All Approved"}
                 </h3>
-                <p className="text-slate-505 text-sm max-w-sm mt-1 font-medium">
+                <p className="text-slate-500 text-sm max-w-sm mt-1 font-medium">
                   {searchQuery
                     ? "Try adjusting your search terms or clear the query to see all pending approvals."
                     : "There are currently no new shop registrations awaiting admin approval."
