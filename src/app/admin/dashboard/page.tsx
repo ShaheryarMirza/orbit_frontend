@@ -18,7 +18,8 @@ import {
   Printer,
   Link2,
   FileSpreadsheet,
-  UploadCloud
+  UploadCloud,
+  Search
 } from "lucide-react";
 
 interface Shop {
@@ -79,6 +80,7 @@ export default function AdminDashboard() {
   const [resolvingRequest, setResolvingRequest] = useState<PasswordResetRequest | null>(null);
   const [newPasswordVal, setNewPasswordVal] = useState("");
   const [isSubmittingResolve, setIsSubmittingResolve] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [activeTab, setActiveTab] = useState<"registered" | "pending" | "password_resets">("registered");
 
@@ -90,6 +92,28 @@ export default function AdminDashboard() {
   const [reviewingShop, setReviewingShop] = useState<Shop | null>(null);
   const [modalStatus, setModalStatus] = useState<"pending" | "approved" | "rejected">("pending");
   const [modalSageRef, setModalSageRef] = useState("");
+
+  // Dynamic search filtering
+  const query = searchQuery.toLowerCase().trim();
+  const filteredShops = shops.filter((shop) => {
+    if (!query) return true;
+    return (
+      (shop.company_name?.toLowerCase() || "").includes(query) ||
+      (shop.account_ref?.toLowerCase() || "").includes(query) ||
+      (shop.city?.toLowerCase() || "").includes(query) ||
+      (shop.email?.toLowerCase() || "").includes(query)
+    );
+  });
+
+  const filteredPendingShops = pendingShops.filter((shop) => {
+    if (!query) return true;
+    return (
+      (shop.company_name?.toLowerCase() || "").includes(query) ||
+      (shop.account_ref?.toLowerCase() || "").includes(query) ||
+      (shop.city?.toLowerCase() || "").includes(query) ||
+      (shop.email?.toLowerCase() || "").includes(query)
+    );
+  });
 
   // 1. Auth Guard Protection
   useEffect(() => {
@@ -313,14 +337,45 @@ export default function AdminDashboard() {
               <p className="text-slate-500 text-sm mt-1 font-medium">Review and approve new B2B customer shop registrations</p>
             </div>
           </div>
-          <button
-            onClick={fetchShops}
-            disabled={isLoadingShops}
-            className="flex items-center justify-center gap-2 text-sm font-semibold border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 py-2.5 px-4 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50 text-slate-700"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoadingShops ? "animate-spin" : ""}`} />
-            Refresh Shops
-          </button>
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              id="bulk-import-file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleFileImport}
+              disabled={isImporting}
+              className="hidden"
+            />
+            <label
+              htmlFor="bulk-import-file"
+              className={`flex items-center justify-center gap-2 text-sm font-semibold py-2.5 px-4 rounded-xl border transition-all cursor-pointer ${
+                isImporting
+                  ? "border-gray-250 bg-gray-50 text-gray-400 cursor-not-allowed"
+                  : "border-gray-300 hover:border-teal-600 bg-white text-slate-700 hover:text-teal-600 shadow-sm"
+              }`}
+            >
+              {isImporting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-teal-650" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-4 h-4 text-teal-600" />
+                  Import Customers
+                </>
+              )}
+            </label>
+
+            <button
+              onClick={fetchShops}
+              disabled={isLoadingShops}
+              className="flex items-center justify-center gap-2 text-sm font-semibold border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 py-2.5 px-4 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50 text-slate-700"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoadingShops ? "animate-spin" : ""}`} />
+              Refresh Shops
+            </button>
+          </div>
         </div>
 
         {/* Alerts */}
@@ -338,76 +393,57 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Bulk Customer Import Tool */}
-        <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm relative overflow-hidden">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-bold text-slate-950 flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-teal-600" />
-                Sage 50 Customer Bulk Import
-              </h3>
-              <p className="text-slate-500 text-xs mt-1 font-medium">
-                Upload an Excel (.xlsx, .xls) or CSV (.csv) file exported from Sage 50 to bulk create customer shops.
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <input
-                type="file"
-                id="bulk-import-file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileImport}
-                disabled={isImporting}
-                className="hidden"
-              />
-              <label
-                htmlFor="bulk-import-file"
-                className={`flex items-center justify-center gap-2 text-xs font-bold py-2.5 px-4 rounded-xl border border-dashed transition-all cursor-pointer ${
-                  isImporting
-                    ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                    : "border-gray-300 hover:border-teal-600/40 bg-white hover:bg-gray-50 text-slate-700 hover:text-teal-600"
-                }`}
-              >
-                {isImporting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Importing Customers...
-                  </>
-                ) : (
-                  <>
-                    <UploadCloud className="w-4 h-4" />
-                    Choose File & Import
-                  </>
-                )}
-              </label>
-            </div>
-          </div>
-
-          {importSummary && (
-            <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl text-xs space-y-2">
-              <div className="grid grid-cols-3 gap-4 text-center font-mono">
-                <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-lg">
-                  <span className="block text-[10px] text-slate-500 font-bold uppercase mb-0.5">Imported</span>
-                  <span className="text-sm font-bold">{importSummary.imported}</span>
-                </div>
-                <div className="bg-teal-50 text-teal-700 border border-teal-200 py-2 rounded-lg">
-                  <span className="block text-[10px] text-slate-500 font-bold uppercase mb-0.5">Updated</span>
-                  <span className="text-sm font-bold">{importSummary.updated}</span>
-                </div>
-                <div className="bg-rose-50 text-rose-700 border border-rose-200 py-2 rounded-lg">
-                  <span className="block text-[10px] text-slate-500 font-bold uppercase mb-0.5">Failed</span>
-                  <span className="text-sm font-bold">{importSummary.failed}</span>
-                </div>
+        {/* Import Summary Results */}
+        {importSummary && (
+          <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm text-xs space-y-3">
+            <h4 className="font-bold text-slate-950 flex items-center gap-1.5 mb-1 text-sm font-sans">
+              <FileSpreadsheet className="w-4 h-4 text-teal-600" />
+              Customer Import Summary
+            </h4>
+            <div className="grid grid-cols-3 gap-4 text-center font-mono">
+              <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-xl">
+                <span className="block text-[10px] text-slate-500 font-bold uppercase mb-0.5">Imported</span>
+                <span className="text-sm font-bold">{importSummary.imported}</span>
               </div>
-              {importSummary.errors.length > 0 && (
-                <div className="text-rose-700 max-h-24 overflow-y-auto pt-2 border-t border-gray-200 font-mono text-[10px] leading-relaxed">
-                  <span className="font-bold block mb-1">Import Warnings/Errors:</span>
-                  {importSummary.errors.map((err, idx) => (
-                    <div key={idx}>• {err}</div>
-                  ))}
-                </div>
-              )}
+              <div className="bg-teal-50 text-teal-700 border border-teal-200 py-2 rounded-xl">
+                <span className="block text-[10px] text-slate-500 font-bold uppercase mb-0.5">Updated</span>
+                <span className="text-sm font-bold">{importSummary.updated}</span>
+              </div>
+              <div className="bg-rose-50 text-rose-700 border border-rose-200 py-2 rounded-xl">
+                <span className="block text-[10px] text-slate-500 font-bold uppercase mb-0.5">Failed</span>
+                <span className="text-sm font-bold">{importSummary.failed}</span>
+              </div>
             </div>
+            {importSummary.errors.length > 0 && (
+              <div className="text-rose-700 max-h-24 overflow-y-auto pt-2 border-t border-gray-200 font-mono text-[10px] leading-relaxed">
+                <span className="font-bold block mb-1">Import Warnings/Errors:</span>
+                {importSummary.errors.map((err, idx) => (
+                  <div key={idx}>• {err}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Global Search Bar */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="h-4.5 w-4.5 text-slate-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search shops by name, account ref, or city..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-10 py-3.5 border border-gray-200 bg-white placeholder-slate-405 text-slate-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all text-sm shadow-sm"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-bold bg-transparent border-0 cursor-pointer outline-none"
+            >
+              Clear
+            </button>
           )}
         </div>
 
@@ -464,12 +500,17 @@ export default function AdminDashboard() {
                 <Loader2 className="w-10 h-10 text-teal-600 animate-spin" />
                 <p className="text-slate-500 text-sm">Retrieving customer shop listings...</p>
               </div>
-            ) : shops.length === 0 ? (
+            ) : filteredShops.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center px-4">
                 <Building2 className="w-12 h-12 text-slate-400 mb-4" />
-                <h3 className="text-lg font-bold text-slate-800">No Shops Registered</h3>
-                <p className="text-slate-500 text-sm max-w-sm mt-1">
-                  There are currently no shop registrations in the database.
+                <h3 className="text-lg font-bold text-slate-800">
+                  {searchQuery ? "No Matching Shops Found" : "No Shops Registered"}
+                </h3>
+                <p className="text-slate-505 text-sm max-w-sm mt-1 font-medium">
+                  {searchQuery
+                    ? "Try adjusting your search terms or clear the query to see all registrations."
+                    : "There are currently no shop registrations in the database."
+                  }
                 </p>
               </div>
             ) : (
@@ -487,7 +528,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 text-sm">
-                    {shops.map((shop) => (
+                    {filteredShops.map((shop) => (
                       <tr key={shop.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="py-4.5 px-6 font-medium text-slate-900">
                           <div className="flex flex-col gap-1">
@@ -542,12 +583,17 @@ export default function AdminDashboard() {
                 <Loader2 className="w-10 h-10 text-teal-600 animate-spin" />
                 <p className="text-slate-500 text-sm">Retrieving pending approvals...</p>
               </div>
-            ) : pendingShops.length === 0 ? (
+            ) : filteredPendingShops.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center px-4">
                 <Building2 className="w-12 h-12 text-slate-400 mb-4" />
-                <h3 className="text-lg font-bold text-slate-800">All Approved</h3>
-                <p className="text-slate-500 text-sm max-w-sm mt-1">
-                  There are currently no new shop registrations awaiting admin approval.
+                <h3 className="text-lg font-bold text-slate-800">
+                  {searchQuery ? "No Matching Pending Approvals" : "All Approved"}
+                </h3>
+                <p className="text-slate-505 text-sm max-w-sm mt-1 font-medium">
+                  {searchQuery
+                    ? "Try adjusting your search terms or clear the query to see all pending approvals."
+                    : "There are currently no new shop registrations awaiting admin approval."
+                  }
                 </p>
               </div>
             ) : (
@@ -562,7 +608,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 text-sm">
-                    {pendingShops.map((shop) => (
+                    {filteredPendingShops.map((shop) => (
                       <tr key={shop.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="py-4.5 px-6 font-medium text-slate-900">
                           <div className="flex flex-col gap-0.5">
