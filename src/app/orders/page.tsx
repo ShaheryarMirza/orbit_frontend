@@ -12,7 +12,10 @@ import {
   AlertCircle,
   RefreshCw,
   Eye,
-  Briefcase
+  Briefcase,
+  Search,
+  X,
+  SlidersHorizontal
 } from "lucide-react";
 
 interface Salesperson {
@@ -39,6 +42,16 @@ interface Order {
   sage_sync_status: "pending" | "processing" | "synced" | "failed";
   created_at: string;
   salesperson: Salesperson | null;
+  account_ref?: string | null;
+  shop?: {
+    id: number;
+    company_name: string;
+    phone_number: string;
+    address: string;
+    postcode: string;
+    city: string;
+    account_ref?: string | null;
+  } | null;
 }
 
 export default function OrderHistoryPage() {
@@ -49,6 +62,64 @@ export default function OrderHistoryPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Filter States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+
+  // Derived filtered orders array
+  const filteredOrders = orders.filter((order) => {
+    // 1. Text filter (case-insensitive substring match against order_id, company_name, account_ref)
+    const query = searchQuery.toLowerCase().trim();
+    if (query) {
+      const orderIdStr = order.id.toString();
+      const orderNumStr = order.order_number?.toLowerCase() || "";
+      const companyName = order.shop?.company_name?.toLowerCase() || "";
+      const accountRef = order.shop?.account_ref?.toLowerCase() || order.account_ref?.toLowerCase() || "";
+      
+      const matchesText =
+        orderIdStr.includes(query) ||
+        orderNumStr.includes(query) ||
+        companyName.includes(query) ||
+        accountRef.includes(query);
+      if (!matchesText) return false;
+    }
+
+    // 2. Date range filter
+    if (startDate || endDate) {
+      const orderDate = new Date(order.created_at);
+      const normalizedOrderDate = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+
+      if (startDate) {
+        const start = new Date(startDate);
+        const normalizedStart = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+        if (normalizedOrderDate < normalizedStart) return false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        const normalizedEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+        if (normalizedOrderDate > normalizedEnd) return false;
+      }
+    }
+
+    // 3. Status filter ('All', 'Pending', 'Synced to Sage', 'Failed')
+    if (statusFilter !== "All") {
+      if (statusFilter === "Pending" && order.sage_sync_status !== "pending") return false;
+      if (statusFilter === "Synced to Sage" && order.sage_sync_status !== "synced") return false;
+      if (statusFilter === "Failed" && order.sage_sync_status !== "failed") return false;
+    }
+
+    return true;
+  });
+
+  const handleClearFilters = () => {
+    setSearchQuery("");
+    setStartDate("");
+    setEndDate("");
+    setStatusFilter("All");
+  };
 
   // 1. Auth Guard
   useEffect(() => {
@@ -107,7 +178,7 @@ export default function OrderHistoryPage() {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Order History</h1>
-              <p className="text-slate-505 text-sm mt-1 font-medium">
+              <p className="text-slate-500 text-sm mt-1 font-medium">
                 {user?.role === "shop_owner" 
                   ? "View and track orders placed for your shop" 
                   : "View and manage B2B customer orders placed across all shops"}
@@ -132,6 +203,74 @@ export default function OrderHistoryPage() {
           </div>
         )}
 
+        {/* Filter Control Bar */}
+        <div className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* Left: Search input */}
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <Search className="h-4.5 w-4.5 text-slate-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search by Order ID, Company Name, or Account Ref..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-3.5 py-2.5 border border-gray-300 bg-white placeholder-slate-400 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all text-sm font-sans"
+            />
+          </div>
+
+          {/* Right: Date Pickers & Status selector */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full md:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-col w-full sm:w-36">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-xl border border-gray-300 bg-white text-slate-900 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-xs font-semibold w-full"
+                  placeholder="Start Date"
+                />
+              </div>
+              <span className="text-slate-400 text-xs font-bold font-mono">to</span>
+              <div className="flex flex-col w-full sm:w-36">
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-xl border border-gray-300 bg-white text-slate-900 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-505 transition-all text-xs font-semibold w-full"
+                  placeholder="End Date"
+                />
+              </div>
+            </div>
+
+            <div className="w-full sm:w-auto relative">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="appearance-none rounded-xl border border-gray-300 bg-white text-slate-800 py-2.5 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-xs font-bold cursor-pointer w-full"
+              >
+                <option value="All">All Sync Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Synced to Sage">Synced to Sage</option>
+                <option value="Failed">Failed</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400" />
+              </div>
+            </div>
+
+            {(searchQuery || startDate || endDate || statusFilter !== "All") && (
+              <button
+                onClick={handleClearFilters}
+                className="flex items-center justify-center gap-1.5 text-xs font-bold border border-slate-300 hover:bg-slate-50 text-slate-700 py-2 px-3.5 rounded-xl transition-all cursor-pointer bg-transparent shrink-0 w-full sm:w-auto"
+              >
+                <X className="w-3.5 h-3.5" />
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Table Container */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
           {isLoading ? (
@@ -155,6 +294,22 @@ export default function OrderHistoryPage() {
                 </Link>
               )}
             </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center px-4 gap-4">
+              <FileSpreadsheet className="w-12 h-12 text-slate-300" />
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">No Matching Orders Found</h3>
+                <p className="text-slate-500 text-sm max-w-md mt-1 font-medium leading-relaxed">
+                  No matching orders found for your current search criteria. Try clearing your filters.
+                </p>
+              </div>
+              <button
+                onClick={handleClearFilters}
+                className="inline-flex items-center gap-1.5 py-2.5 px-5 rounded-xl text-white bg-teal-600 hover:bg-teal-700 text-xs font-bold shadow-sm transition-all border-0 cursor-pointer"
+              >
+                Clear Filters
+              </button>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -170,7 +325,7 @@ export default function OrderHistoryPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-sm">
-                  {orders.map((order) => {
+                  {filteredOrders.map((order) => {
                     const formattedDate = new Date(order.created_at).toLocaleDateString(undefined, {
                       year: "numeric",
                       month: "short",
