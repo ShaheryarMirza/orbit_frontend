@@ -35,8 +35,6 @@ export default function LoginPage() {
     try {
       await api.post("/api/auth/forgot-password-request", {
         account_ref: forgotRef,
-        company_name: forgotCompany,
-        email: forgotEmail,
         phone_number: forgotPhone,
       });
 
@@ -242,32 +240,7 @@ export default function LoginPage() {
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm placeholder-slate-300 text-slate-900"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Company Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={forgotCompany}
-                    onChange={(e) => setForgotCompany(e.target.value)}
-                    placeholder="e.g. Acme Stores"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm placeholder-slate-300 text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="e.g. owner@acme.com"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm placeholder-slate-300 text-slate-900"
-                  />
-                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
                     Contact Phone Number *
