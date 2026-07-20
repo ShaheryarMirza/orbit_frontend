@@ -17,7 +17,8 @@ import {
   X,
   Check,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Search
 } from "lucide-react";
 
 interface SubCategory {
@@ -54,6 +55,7 @@ export default function AdminProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Form Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -230,6 +232,29 @@ export default function AdminProductsPage() {
   const selectedCategory = categories.find((cat) => cat.id === Number(selectedCatId));
   const availableSubcategories = selectedCategory ? selectedCategory.subcategories : [];
 
+  // Dynamic search filtering
+  const query = searchQuery.toLowerCase().trim();
+  const filteredProducts = products.filter((product) => {
+    if (!query) return true;
+
+    const catLabel = categories.find((c) => c.id === product.category_id)?.name || "";
+    let subLabel = "";
+    for (const cat of categories) {
+      const sub = cat.subcategories.find((s) => s.id === product.subcategory_id);
+      if (sub) {
+        subLabel = sub.name;
+        break;
+      }
+    }
+
+    return (
+      (product.product_name?.toLowerCase() || "").includes(query) ||
+      (product.product_code?.toLowerCase() || "").includes(query) ||
+      catLabel.toLowerCase().includes(query) ||
+      subLabel.toLowerCase().includes(query)
+    );
+  });
+
   if (isCheckingAuth || !isAuthenticated || user?.role !== "admin") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-4 bg-gray-50 text-slate-800">
@@ -285,6 +310,28 @@ export default function AdminProductsPage() {
           </div>
         )}
 
+        {/* Sleek Search Bar */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="h-4.5 w-4.5 text-slate-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search products by name, SKU, or category..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-10 py-3.5 border border-gray-200 bg-white placeholder-slate-400 text-slate-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all text-sm shadow-sm font-sans"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-bold bg-transparent border-0 cursor-pointer outline-none"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
         {/* Products Table Card */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
           {isLoading ? (
@@ -296,8 +343,16 @@ export default function AdminProductsPage() {
             <div className="flex flex-col items-center justify-center py-20 text-center px-4">
               <Package className="w-12 h-12 text-slate-300 mb-4" />
               <h3 className="text-lg font-bold text-slate-800">No Products Found</h3>
-              <p className="text-slate-505 text-sm max-w-sm mt-1">
+              <p className="text-slate-500 text-sm max-w-sm mt-1">
                 There are currently no products in the catalog database. Click "Add Product" to create one.
+              </p>
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center px-4">
+              <Package className="w-12 h-12 text-slate-300 mb-4" />
+              <h3 className="text-lg font-bold text-slate-800">No Matching Products Found</h3>
+              <p className="text-slate-500 text-sm max-w-sm mt-1 font-medium">
+                No matching products found for your search. Try adjusting your search terms or clear the query.
               </p>
             </div>
           ) : (
@@ -315,7 +370,7 @@ export default function AdminProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-sm">
-                  {products.map((product) => {
+                  {filteredProducts.map((product) => {
                     const priceNum = typeof product.price === "string" ? parseFloat(product.price) : product.price;
                     const catLabel = categories.find((c) => c.id === product.category_id)?.name || "—";
                     
