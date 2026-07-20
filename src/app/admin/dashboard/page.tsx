@@ -63,7 +63,24 @@ export default function AdminDashboard() {
   // Pending approvals state
   const [pendingShops, setPendingShops] = useState<any[]>([]);
   const [isLoadingPending, setIsLoadingPending] = useState(true);
-  const [activeTab, setActiveTab] = useState<"registered" | "pending">("registered");
+
+  // Password Reset Requests State
+  interface PasswordResetRequest {
+    id: number;
+    account_ref: string;
+    company_name: string;
+    email: string;
+    phone_number: string;
+    status: "pending" | "resolved";
+    created_at: string;
+  }
+  const [resetRequests, setResetRequests] = useState<PasswordResetRequest[]>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(true);
+  const [resolvingRequest, setResolvingRequest] = useState<PasswordResetRequest | null>(null);
+  const [newPasswordVal, setNewPasswordVal] = useState("");
+  const [isSubmittingResolve, setIsSubmittingResolve] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<"registered" | "pending" | "password_resets">("registered");
 
   // Import State
   const [isImporting, setIsImporting] = useState(false);
@@ -140,10 +157,53 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchResetRequests = async () => {
+    setIsLoadingRequests(true);
+    try {
+      const res = await api.get("/api/admin/password-requests");
+      setResetRequests(res.data || []);
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to fetch password reset requests.");
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  };
+
+  const handleResolveRequest = async (requestId: number, newPassword?: string) => {
+    setIsSubmittingResolve(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await api.patch(`/api/admin/password-requests/${requestId}/resolve`, {
+        new_password: newPassword || null,
+      });
+      setSuccessMsg(
+        newPassword
+          ? "Password reset and marked as resolved successfully!"
+          : "Password request dismissed successfully."
+      );
+      setResetRequests((prev) => prev.filter((r) => r.id !== requestId));
+      setResolvingRequest(null);
+      setNewPasswordVal("");
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      console.error(err);
+      if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else {
+        setError("Failed to resolve password reset request.");
+      }
+    } finally {
+      setIsSubmittingResolve(false);
+    }
+  };
+
   useEffect(() => {
     if (!isCheckingAuth && isAuthenticated && user?.role === "admin") {
       fetchShops();
       fetchPendingShops();
+      fetchResetRequests();
     }
   }, [isCheckingAuth, isAuthenticated, user]);
 
@@ -381,6 +441,21 @@ export default function AdminDashboard() {
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setActiveTab("password_resets")}
+              className={`flex-1 sm:flex-none py-3.5 px-6 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                activeTab === "password_resets"
+                  ? "border-teal-600 text-teal-600 bg-white font-extrabold"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Password Reset Requests
+              {resetRequests.length > 0 && (
+                <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
+                  {resetRequests.length}
+                </span>
+              )}
+            </button>
           </div>
 
           {activeTab === "registered" ? (
@@ -461,7 +536,7 @@ export default function AdminDashboard() {
                 </table>
               </div>
             )
-          ) : (
+          ) : activeTab === "pending" ? (
             isLoadingPending ? (
               <div className="flex flex-col items-center justify-center py-24 gap-4">
                 <Loader2 className="w-10 h-10 text-teal-600 animate-spin" />
@@ -508,6 +583,73 @@ export default function AdminDashboard() {
                             ) : (
                               "Approve"
                             )}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          ) : (
+            isLoadingRequests ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-4">
+                <Loader2 className="w-10 h-10 text-teal-600 animate-spin" />
+                <p className="text-slate-500 text-sm">Retrieving password reset requests...</p>
+              </div>
+            ) : resetRequests.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center px-4">
+                <Building2 className="w-12 h-12 text-slate-400 mb-4" />
+                <h3 className="text-lg font-bold text-slate-800">No Password Reset Requests</h3>
+                <p className="text-slate-500 text-sm max-w-sm mt-1">
+                  There are currently no pending password reset requests.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                      <th className="py-4 px-6">Account Number</th>
+                      <th className="py-4 px-6">Company Name</th>
+                      <th className="py-4 px-6">Email Address</th>
+                      <th className="py-4 px-6">Phone Number</th>
+                      <th className="py-4 px-6">Date Requested</th>
+                      <th className="py-4 px-6 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-sm">
+                    {resetRequests.map((req) => (
+                      <tr key={req.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="py-4.5 px-6 font-mono text-slate-900 font-bold">{req.account_ref}</td>
+                        <td className="py-4.5 px-6 text-slate-900 font-semibold">{req.company_name}</td>
+                        <td className="py-4.5 px-6 text-slate-650 font-mono">{req.email}</td>
+                        <td className="py-4.5 px-6 text-slate-650 font-mono">{req.phone_number}</td>
+                        <td className="py-4.5 px-6 text-slate-500">
+                          {new Date(req.created_at).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </td>
+                        <td className="py-4.5 px-6 text-right space-x-2">
+                          <button
+                            onClick={() => {
+                              setResolvingRequest(req);
+                              setNewPasswordVal("");
+                            }}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 py-1.5 px-3.5 rounded-lg transition-all cursor-pointer shadow-sm border-0"
+                          >
+                            Reset Password
+                          </button>
+                          <button
+                            onClick={() => handleResolveRequest(req.id)}
+                            disabled={isSubmittingResolve}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 border border-slate-300 hover:bg-slate-50 py-1.5 px-3.5 rounded-lg transition-all cursor-pointer shadow-sm bg-transparent"
+                          >
+                            Dismiss
                           </button>
                         </td>
                       </tr>
@@ -637,6 +779,61 @@ export default function AdminDashboard() {
                   <Check className="w-4 h-4" />
                 )}
                 Save Registration
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {resolvingRequest && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-200 rounded-3xl p-6 w-full max-w-md space-y-6 shadow-xl relative overflow-hidden text-slate-800 animate-none">
+            <button
+              onClick={() => setResolvingRequest(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 font-sans">Reset Customer Password</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Set a new password for {resolvingRequest.company_name} ({resolvingRequest.account_ref})
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block">New Password</label>
+                <input
+                  type="text"
+                  placeholder="Enter new password (min 4 chars)"
+                  value={newPasswordVal}
+                  onChange={(e) => setNewPasswordVal(e.target.value)}
+                  className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-sans"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => setResolvingRequest(null)}
+                className="py-2 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 text-sm font-semibold text-slate-600 transition-colors cursor-pointer bg-transparent"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingResolve || !newPasswordVal.trim() || newPasswordVal.length < 4}
+                onClick={() => handleResolveRequest(resolvingRequest.id, newPasswordVal)}
+                className="inline-flex items-center gap-1.5 py-2 px-5 rounded-xl text-white bg-teal-600 hover:bg-teal-700 text-sm font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isSubmittingResolve ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                Save & Resolve
               </button>
             </div>
           </div>
