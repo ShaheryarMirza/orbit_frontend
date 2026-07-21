@@ -138,10 +138,10 @@ export default function ShopCatalog() {
   };
 
   // 5. Handle Quantity Tweaking
-  const handleQuantityChange = (productId: number, val: number, maxQty: number) => {
+  const handleQuantityChange = (productId: number, val: number) => {
     setQuantities((prev) => ({
       ...prev,
-      [productId]: Math.max(1, Math.min(maxQty, val)),
+      [productId]: Math.max(1, val),
     }));
   };
 
@@ -149,15 +149,6 @@ export default function ShopCatalog() {
   const handleAddToCart = (product: Product) => {
     const qtyToAdd = quantities[product.id] || 1;
     
-    // Check stock limits based on cart contents
-    const existingCartItem = items.find((item) => item.product.id === product.id);
-    const currentCartQty = existingCartItem?.quantity || 0;
-    
-    if (currentCartQty + qtyToAdd > product.quantity) {
-      alert(`Cannot add ${qtyToAdd} items. You already have ${currentCartQty} in cart, and max stock is ${product.quantity}.`);
-      return;
-    }
-
     addItem(product, qtyToAdd);
     alert(`${qtyToAdd} x ${product.product_name} added to cart!`);
     
@@ -325,7 +316,6 @@ export default function ShopCatalog() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                 {filteredProducts.map((product) => {
                   const currentQty = quantities[product.id] || 1;
-                  const hasStock = product.quantity > 0;
                   const priceNum = typeof product.price === "string" ? parseFloat(product.price) : product.price;
 
                   return (
@@ -333,18 +323,6 @@ export default function ShopCatalog() {
                       key={product.id}
                       className="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col relative"
                     >
-                      {/* Stock tag */}
-                      <div className="absolute top-3 right-3 z-10">
-                        {hasStock ? (
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            {product.quantity} In Stock
-                          </span>
-                        ) : (
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
-                            Out of Stock
-                          </span>
-                        )}
-                      </div>
 
                       {/* Product Image */}
                       <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden border-b border-gray-100 relative">
@@ -387,14 +365,12 @@ export default function ShopCatalog() {
                               <span className="text-[10px] text-slate-500 font-normal normal-case">ex. VAT</span>
                             </span>
                           </div>
-
-                          {/* Quantity Selector & Add to Cart */}
-                          {hasStock ? (
+                           {/* Quantity Selector & Add to Cart */}
                             <div className="space-y-3">
                               {/* Qty controller */}
                               <div className="flex items-center justify-between border border-gray-200 bg-gray-50 rounded-xl p-1">
                                 <button
-                                  onClick={() => handleQuantityChange(product.id, currentQty - 1, product.quantity)}
+                                  onClick={() => handleQuantityChange(product.id, currentQty - 1)}
                                   className="p-1.5 hover:bg-gray-200 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                                 >
                                   <Minus className="w-4 h-4" />
@@ -403,7 +379,7 @@ export default function ShopCatalog() {
                                   {currentQty}
                                 </span>
                                 <button
-                                  onClick={() => handleQuantityChange(product.id, currentQty + 1, product.quantity)}
+                                  onClick={() => handleQuantityChange(product.id, currentQty + 1)}
                                   className="p-1.5 hover:bg-gray-200 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                                 >
                                   <Plus className="w-4 h-4" />
@@ -418,14 +394,6 @@ export default function ShopCatalog() {
                                 Add to Cart
                               </button>
                             </div>
-                          ) : (
-                            <button
-                              disabled
-                              className="w-full py-3 px-4 rounded-xl text-slate-400 bg-gray-100 border border-gray-200 text-sm font-bold cursor-not-allowed opacity-60 font-sans"
-                            >
-                              Sold Out
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>
