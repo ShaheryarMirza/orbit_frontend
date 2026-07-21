@@ -400,7 +400,6 @@ export default function AdminProductsPage() {
                     <th className="py-4 px-6">Product Details</th>
                     <th className="py-4 px-6">Category / Sub</th>
                     <th className="py-4 px-6 text-right">Price (ex. VAT)</th>
-                    <th className="py-4 px-6 text-center">Stock</th>
                     <th className="py-4 px-6">Status</th>
                     <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
@@ -476,18 +475,7 @@ export default function AdminProductsPage() {
                           £{priceNum.toFixed(2)}
                         </td>
 
-                        {/* Quantity */}
-                        <td className="py-4.5 px-6 text-center">
-                          {product.quantity > 0 ? (
-                            <span className="text-xs font-bold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              {product.quantity}
-                            </span>
-                          ) : (
-                            <span className="text-xs font-bold px-2.5 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200">
-                              Out
-                            </span>
-                          )}
-                        </td>
+
 
                         {/* Status */}
                         <td className="py-4.5 px-6">
