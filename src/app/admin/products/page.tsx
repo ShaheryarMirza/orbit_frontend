@@ -111,7 +111,7 @@ export default function AdminProductsPage() {
     setError(null);
     try {
       const [productsRes, categoriesRes] = await Promise.all([
-        api.get("/products", { params: { page_size: 100 } }),
+        api.get("/products", { params: { page_size: 100000 } }),
         api.get("/api/categories")
       ]);
       setProducts(productsRes.data.items || []);

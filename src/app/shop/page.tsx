@@ -70,7 +70,7 @@ export default function ShopCatalog() {
     setIsLoadingProducts(true);
     setError(null);
     try {
-      const params: any = { is_active: true, page_size: 100 };
+      const params: any = { is_active: true, page_size: 100000 };
       if (catSlug) params.category_slug = catSlug;
       if (subSlug) params.subcategory_slug = subSlug;
 
