@@ -170,7 +170,7 @@ export default function CartPage() {
                       <div className="w-16 h-16 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shrink-0 flex items-center justify-center text-gray-400 font-mono text-xs">
                         {item.product.image_url ? (
                           <img
-                            src={API_BASE_URL + item.product.image_url}
+                            src={item.product.image_url.startsWith("http") ? item.product.image_url : (API_BASE_URL + item.product.image_url)}
                             alt={item.product.product_name}
                             className="w-full h-full object-cover"
                           />

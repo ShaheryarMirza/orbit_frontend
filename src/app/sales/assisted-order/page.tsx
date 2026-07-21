@@ -140,16 +140,7 @@ export default function AssistedOrderPage() {
       return;
     }
 
-    // Validate quantities against stock levels
-    for (const row of validRows) {
-      const product = products.find((p) => p.id === row.product_id);
-      if (product && row.quantity > product.quantity) {
-        setError(
-          `Insufficient stock for product ${product.product_code}. Available: ${product.quantity}, Requested: ${row.quantity}`
-        );
-        return;
-      }
-    }
+    // Removed stock quantity checks for B2B ordering
 
     setIsSubmitting(true);
 

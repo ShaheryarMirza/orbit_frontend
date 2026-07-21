@@ -46,6 +46,12 @@ interface Product {
   is_active: boolean;
 }
 
+interface ImportSummary {
+  created: number;
+  skipped: number;
+  errors: { row: number; error: string }[];
+}
+
 export default function AdminProductsPage() {
   const { user, isAuthenticated, initialize } = useAuthStore();
   const router = useRouter();
@@ -79,6 +85,10 @@ export default function AdminProductsPage() {
   // Image Upload state
   const [uploadingProductId, setUploadingProductId] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Import State
+  const [isImporting, setIsImporting] = useState(false);
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
 
   // 1. Auth Guard
   useEffect(() => {
@@ -269,6 +279,47 @@ export default function AdminProductsPage() {
     }
   };
 
+  // 7. Bulk Import Products Handler
+  const handleBulkImportProducts = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    setError(null);
+    setSuccess(null);
+    setImportSummary(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await api.post("/products/import", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setImportSummary({
+        created: res.data.created,
+        skipped: res.data.skipped,
+        errors: res.data.errors,
+      });
+
+      showSuccess(`Spreadsheet import complete! Processed ${res.data.created} products successfully.`);
+      loadData(); // Refresh product list
+    } catch (err: any) {
+      console.error(err);
+      if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else {
+        setError("Failed to import products spreadsheet. Please check columns and formatting.");
+      }
+    } finally {
+      setIsImporting(false);
+      e.target.value = ""; // Reset
+    }
+  };
+
   // Filter subcategories dynamically based on selected Category ID
   const selectedCategory = categories.find((cat) => cat.id === Number(selectedCatId));
   const availableSubcategories = selectedCategory ? selectedCategory.subcategories : [];
@@ -327,14 +378,73 @@ export default function AdminProductsPage() {
             </div>
           </div>
 
-          <button
-            onClick={handleOpenCreate}
-            className="flex items-center justify-center gap-2 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 py-3 px-6 rounded-xl shadow-sm transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Add Product
-          </button>
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              id="bulk-import-products"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleBulkImportProducts}
+              disabled={isImporting}
+              className="hidden"
+            />
+            <label
+              htmlFor="bulk-import-products"
+              className={`flex items-center justify-center gap-2 text-sm font-semibold py-3 px-6 rounded-xl border transition-all cursor-pointer shadow-sm ${
+                isImporting
+                  ? "border-gray-250 bg-gray-50 text-gray-400 cursor-not-allowed"
+                  : "border-gray-300 hover:border-teal-600 bg-white text-slate-700 hover:text-teal-600"
+              }`}
+            >
+              {isImporting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-teal-650" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 text-teal-600" />
+                  Import Products
+                </>
+              )}
+            </label>
+
+            <button
+              onClick={handleOpenCreate}
+              className="flex items-center justify-center gap-2 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 py-3 px-6 rounded-xl shadow-sm transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Add Product
+            </button>
+          </div>
         </div>
+
+        {/* Import Summary Results */}
+        {importSummary && (
+          <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm text-xs space-y-3">
+            <h4 className="font-bold text-slate-950 flex items-center gap-1.5 mb-1 text-sm">
+              <Upload className="w-4 h-4 text-teal-600" />
+              Products Import Summary
+            </h4>
+            <div className="grid grid-cols-2 gap-4 text-center font-mono">
+              <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-xl">
+                <span className="block text-[10px] text-slate-500 font-bold uppercase mb-0.5">Processed (Created/Updated)</span>
+                <span className="text-sm font-bold">{importSummary.created}</span>
+              </div>
+              <div className="bg-rose-50 text-rose-700 border border-rose-200 py-2 rounded-xl">
+                <span className="block text-[10px] text-slate-500 font-bold uppercase mb-0.5">Skipped / Failed</span>
+                <span className="text-sm font-bold">{importSummary.errors.length}</span>
+              </div>
+            </div>
+            {importSummary.errors.length > 0 && (
+              <div className="text-rose-700 max-h-36 overflow-y-auto pt-2 border-t border-gray-200 font-mono text-[10px] leading-relaxed">
+                <span className="font-bold block mb-1">Import Warnings/Errors:</span>
+                {importSummary.errors.map((err, idx) => (
+                  <div key={idx}>• Row {err.row}: {err.error}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Alerts */}
         {error && (
@@ -433,7 +543,7 @@ export default function AdminProductsPage() {
                           <div className="relative group/img w-12 h-12 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden flex items-center justify-center text-slate-400">
                             {product.image_url ? (
                               <img
-                                src={API_BASE_URL + product.image_url}
+                                src={product.image_url.startsWith("http") ? product.image_url : (API_BASE_URL + product.image_url)}
                                 alt={product.product_name}
                                 className="w-full h-full object-cover"
                               />
