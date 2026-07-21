@@ -71,6 +71,8 @@ export default function AdminProductsPage() {
   const [selectedCatId, setSelectedCatId] = useState<number | "">("");
   const [selectedSubId, setSelectedSubId] = useState<number | "">("");
   const [isActive, setIsActive] = useState(true);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
 
   // Image Upload state
   const [uploadingProductId, setUploadingProductId] = useState<number | null>(null);
@@ -132,6 +134,8 @@ export default function AdminProductsPage() {
     setSelectedCatId("");
     setSelectedSubId("");
     setIsActive(true);
+    setImageFile(null);
+    setImagePreviewUrl("");
     setIsFormOpen(true);
   };
 
@@ -145,7 +149,25 @@ export default function AdminProductsPage() {
     setSelectedCatId(product.category_id || "");
     setSelectedSubId(product.subcategory_id || "");
     setIsActive(product.is_active);
+    setImageFile(null);
+    const imageUrl = product.image_url 
+      ? (product.image_url.startsWith("http") ? product.image_url : `${API_BASE_URL}${product.image_url}`)
+      : "";
+    setImagePreviewUrl(imageUrl);
     setIsFormOpen(true);
+  };
+
+  const handleModalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreviewUrl("");
   };
 
   // 4. Save Product (Create or Edit)
@@ -166,13 +188,28 @@ export default function AdminProductsPage() {
     };
 
     try {
+      let savedProduct: Product;
       if (formType === "create") {
-        await api.post("/products", payload);
+        const res = await api.post("/products", payload);
+        savedProduct = res.data;
         showSuccess("Product created successfully!");
       } else {
-        await api.patch(`/products/${productId}`, payload);
+        const res = await api.patch(`/products/${productId}`, payload);
+        savedProduct = res.data;
         showSuccess("Product updated successfully!");
       }
+
+      // Upload image if selected in the modal
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append("file", imageFile);
+        await api.post(`/products/${savedProduct.id}/image`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data"
+          }
+        });
+      }
+
       setIsFormOpen(false);
       loadData();
     } catch (err: any) {
@@ -592,6 +629,46 @@ export default function AdminProductsPage() {
                     <option key={sub.id} value={sub.id}>{sub.name}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Product Picture Selection */}
+              <div className="space-y-1">
+                <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Product Picture</label>
+                <div className="flex items-center gap-4 p-3.5 border border-gray-200 rounded-2xl bg-slate-50 hover:bg-slate-100/50 transition-colors">
+                  <div className="w-16 h-16 rounded-xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 relative group">
+                    {imagePreviewUrl ? (
+                      <img src={imagePreviewUrl} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="w-6 h-6 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <p className="text-xs text-slate-500 font-medium">
+                      {imageFile ? imageFile.name : (imagePreviewUrl ? "Existing product image loaded" : "No image selected")}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-slate-700 text-xs font-bold shadow-sm transition-all cursor-pointer">
+                        <Upload className="w-3.5 h-3.5" />
+                        Select Image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleModalFileChange}
+                          className="hidden"
+                        />
+                      </label>
+                      {imagePreviewUrl && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="inline-flex items-center gap-1 py-1.5 px-3 rounded-xl border border-red-200 bg-white hover:bg-red-50 text-red-600 text-xs font-bold transition-all cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Active check */}
