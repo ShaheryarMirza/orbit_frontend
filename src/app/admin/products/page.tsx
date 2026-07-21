@@ -160,7 +160,6 @@ export default function AdminProductsPage() {
       product_code: productCode.trim(),
       product_name: productName.trim(),
       price: Number(price),
-      quantity: Number(quantity),
       category_id: selectedCatId ? Number(selectedCatId) : null,
       subcategory_id: selectedSubId ? Number(selectedSubId) : null,
       is_active: isActive
@@ -544,7 +543,7 @@ export default function AdminProductsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-505 font-bold uppercase tracking-wider">Unit Price (ex. VAT)</label>
+                  <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Unit Price (ex. VAT)</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">£</span>
                     <input
@@ -559,26 +558,10 @@ export default function AdminProductsPage() {
                     />
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Stock Quantity</label>
-                  <input
-                    type="number"
-                    min={0}
-                    required
-                    placeholder="0"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-mono"
-                  />
-                </div>
-              </div>
 
-              {/* Category & Subcategory Hierarchy Dropdowns */}
-              <div className="grid grid-cols-2 gap-4">
-                
                 {/* Category Dropdown */}
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-505 font-bold uppercase tracking-wider">Category</label>
+                  <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Category</label>
                   <select
                     value={selectedCatId}
                     onChange={(e) => {
@@ -593,23 +576,22 @@ export default function AdminProductsPage() {
                     ))}
                   </select>
                 </div>
+              </div>
 
-                {/* Subcategory Dropdown (dynamically filtered by parent category selection) */}
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Subcategory</label>
-                  <select
-                    disabled={!selectedCatId}
-                    value={selectedSubId}
-                    onChange={(e) => setSelectedSubId(e.target.value ? Number(e.target.value) : "")}
-                    className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-sans disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="">Unassigned</option>
-                    {availableSubcategories.map((sub) => (
-                      <option key={sub.id} value={sub.id}>{sub.name}</option>
-                    ))}
-                  </select>
-                </div>
-
+              {/* Subcategory Dropdown (dynamically filtered by parent category selection) */}
+              <div className="space-y-1">
+                <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Subcategory</label>
+                <select
+                  disabled={!selectedCatId}
+                  value={selectedSubId}
+                  onChange={(e) => setSelectedSubId(e.target.value ? Number(e.target.value) : "")}
+                  className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">Unassigned</option>
+                  {availableSubcategories.map((sub) => (
+                    <option key={sub.id} value={sub.id}>{sub.name}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Active check */}
