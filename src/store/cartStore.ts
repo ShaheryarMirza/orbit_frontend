@@ -8,6 +8,7 @@ export interface Product {
   quantity: number; // stock level
   image_url: string | null;
   is_active: boolean;
+  description?: string | null;
 }
 
 export interface CartItem {

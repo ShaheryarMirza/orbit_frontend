@@ -180,6 +180,11 @@ export default function CartPage() {
                       </div>
                       <div className="space-y-1">
                         <h4 className="font-extrabold text-slate-905 leading-snug line-clamp-1">{item.product.product_name}</h4>
+                        {item.product.description && (
+                          <p className="text-[11px] text-slate-500 line-clamp-1 leading-normal font-normal">
+                            {item.product.description}
+                          </p>
+                        )}
                         <p className="text-xs text-slate-500 font-mono">{item.product.product_code}</p>
                         <p className="text-xs text-slate-400">£{priceNum.toFixed(2)} ex. VAT each</p>
                       </div>

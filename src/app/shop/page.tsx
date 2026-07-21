@@ -171,7 +171,8 @@ export default function ShopCatalog() {
   // Search filter client-side (combined with server-side category filters)
   const filteredProducts = products.filter((prod) =>
     prod.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    prod.product_code.toLowerCase().includes(searchQuery.toLowerCase())
+    prod.product_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (prod.description && prod.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   if (isCheckingAuth || !isAuthenticated || user?.role !== "shop_owner") {
@@ -372,6 +373,11 @@ export default function ShopCatalog() {
                           <h3 className="text-sm font-extrabold text-slate-900 leading-tight line-clamp-2">
                             {product.product_name}
                           </h3>
+                          {product.description && (
+                            <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-normal font-normal">
+                              {product.description}
+                            </p>
+                          )}
                         </div>
 
                         <div className="space-y-3.5">

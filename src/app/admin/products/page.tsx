@@ -39,6 +39,7 @@ interface Product {
   subcategory_id: number | null;
   product_code: string;
   product_name: string;
+  description: string | null;
   image_url: string | null;
   price: string | number;
   quantity: number;
@@ -66,6 +67,7 @@ export default function AdminProductsPage() {
   const [productId, setProductId] = useState<number | null>(null);
   const [productCode, setProductCode] = useState("");
   const [productName, setProductName] = useState("");
+  const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("0");
   const [selectedCatId, setSelectedCatId] = useState<number | "">("");
@@ -129,6 +131,7 @@ export default function AdminProductsPage() {
     setProductId(null);
     setProductCode("");
     setProductName("");
+    setDescription("");
     setPrice("");
     setQuantity("0");
     setSelectedCatId("");
@@ -144,6 +147,7 @@ export default function AdminProductsPage() {
     setProductId(product.id);
     setProductCode(product.product_code);
     setProductName(product.product_name);
+    setDescription(product.description || "");
     setPrice(typeof product.price === "number" ? product.price.toString() : product.price);
     setQuantity(product.quantity.toString());
     setSelectedCatId(product.category_id || "");
@@ -181,6 +185,7 @@ export default function AdminProductsPage() {
     const payload = {
       product_code: productCode.trim(),
       product_name: productName.trim(),
+      description: description.trim() || null,
       price: Number(price),
       category_id: selectedCatId ? Number(selectedCatId) : null,
       subcategory_id: selectedSubId ? Number(selectedSubId) : null,
@@ -397,7 +402,8 @@ export default function AdminProductsPage() {
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
                     <th className="py-4 px-6 w-16">Image</th>
-                    <th className="py-4 px-6">Product Details</th>
+                    <th className="py-4 px-6">Name</th>
+                    <th className="py-4 px-6 w-1/4">Description</th>
                     <th className="py-4 px-6">Category / Sub</th>
                     <th className="py-4 px-6 text-right">Price (ex. VAT)</th>
                     <th className="py-4 px-6">Status</th>
@@ -457,6 +463,13 @@ export default function AdminProductsPage() {
                           <div className="flex flex-col">
                             <span className="text-base text-slate-950 font-bold">{product.product_name}</span>
                             <span className="text-xs text-slate-500 font-mono mt-0.5">{product.product_code}</span>
+                          </div>
+                        </td>
+
+                        {/* Description */}
+                        <td className="py-4.5 px-6 text-slate-500 max-w-xs">
+                          <div className="text-xs line-clamp-2 leading-relaxed font-normal">
+                            {product.description || <span className="text-slate-300 italic">No description</span>}
                           </div>
                         </td>
 
@@ -543,7 +556,7 @@ export default function AdminProductsPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Product Name</label>
+                  <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Name</label>
                   <input
                     type="text"
                     required
@@ -564,6 +577,18 @@ export default function AdminProductsPage() {
                     className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-mono"
                   />
                 </div>
+              </div>
+
+              {/* Product Description */}
+              <div className="space-y-1">
+                <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Product Description</label>
+                <textarea
+                  placeholder="e.g. Premium quality copper wire designed for high performance electrical installations..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-sans"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
