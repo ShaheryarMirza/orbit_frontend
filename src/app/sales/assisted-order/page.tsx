@@ -119,18 +119,22 @@ export default function AssistedOrderPage() {
     setError(null);
     try {
       const [shopsRes, prodRes, catRes] = await Promise.all([
-        api.get("/admin/shops?page_size=10000"),
-        api.get("/api/products?page_size=100000"),
+        api.get("/admin/shops", { params: { page_size: 10000 } }),
+        api.get("/products", { params: { page_size: 100000 } }),
         api.get("/api/categories")
       ]);
-      const rawShops = shopsRes.data.items || shopsRes.data || [];
+      const rawShops = shopsRes.data?.items || shopsRes.data || [];
       const approvedShops = (Array.isArray(rawShops) ? rawShops : []).filter((s: Shop) => s.approval_status === "approved");
       setShops(approvedShops);
-      setProducts(prodRes.data.items || prodRes.data || []);
-      setCategories(catRes.data.items || catRes.data || []);
+
+      const rawProds = prodRes.data?.items || prodRes.data || [];
+      setProducts(Array.isArray(rawProds) ? rawProds : []);
+
+      const rawCats = catRes.data?.items || catRes.data || [];
+      setCategories(Array.isArray(rawCats) ? rawCats : []);
     } catch (err: any) {
-      console.error(err);
-      setError("Failed to load assisted order data. Please check connectivity.");
+      console.error("Assisted Order data loading error:", err);
+      setError(err.response?.data?.detail || "Failed to load assisted order data. Please check connectivity.");
     } finally {
       setIsLoadingData(false);
     }
