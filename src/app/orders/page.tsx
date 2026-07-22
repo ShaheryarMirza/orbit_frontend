@@ -178,11 +178,6 @@ export default function OrderHistoryPage() {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Order History</h1>
-              <p className="text-slate-500 text-sm mt-1 font-medium">
-                {user?.role === "shop_owner" 
-                  ? "View and track orders placed for your shop" 
-                  : "View and manage B2B customer orders placed across all shops"}
-              </p>
             </div>
           </div>
           <button
