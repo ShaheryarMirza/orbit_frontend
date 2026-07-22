@@ -335,7 +335,6 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">Admin Dashboard</h1>
-              <p className="text-slate-500 text-sm mt-1 font-medium">Review and approve new B2B customer shop registrations</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -621,15 +620,10 @@ export default function AdminDashboard() {
                         <td className="py-4.5 px-6 font-mono font-bold text-slate-600">{shop.account_ref}</td>
                         <td className="py-4.5 px-6 text-right">
                           <button
-                            onClick={() => handleApproveShop(shop.id)}
-                            disabled={actioningId === shop.id}
-                            className="inline-flex items-center gap-1 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 py-1.5 px-4 rounded-lg transition-all cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => openReviewModal(shop)}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-teal-50 border border-gray-300 hover:border-teal-600 hover:text-teal-700 py-1.5 px-3.5 rounded-lg transition-all cursor-pointer shadow-xs"
                           >
-                            {actioningId === shop.id ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              "Approve"
-                            )}
+                            Review
                           </button>
                         </td>
                       </tr>
@@ -728,20 +722,43 @@ export default function AdminDashboard() {
             </div>
 
             {/* Shop Audit details */}
-            <div className="bg-gray-50 border border-gray-200 p-4 rounded-2xl space-y-3.5 text-xs text-slate-700 font-sans">
+            <div className="bg-gray-50 border border-gray-200 p-4 rounded-2xl space-y-3.5 text-xs text-slate-700 font-sans max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Company Name</span>
                   <span className="font-bold text-slate-900 text-sm leading-snug">{reviewingShop.company_name}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Contact Phone</span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Contact Name</span>
+                  <span className="font-semibold text-slate-900">{reviewingShop.contact_name || "—"}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Email Address</span>
+                  <span className="font-mono text-slate-900">{reviewingShop.email || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Main Phone</span>
                   <span className="font-mono text-slate-900">{reviewingShop.phone_number}</span>
                 </div>
               </div>
 
-              {reviewingShop.fax || reviewingShop.website ? (
-                <div className="grid grid-cols-2 gap-4">
+              {(reviewingShop.telephone_2 || reviewingShop.telephone_3 || reviewingShop.fax || reviewingShop.website) && (
+                <div className="grid grid-cols-2 gap-4 border-t border-gray-200/60 pt-2.5">
+                  {reviewingShop.telephone_2 && (
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Telephone 2</span>
+                      <span className="font-mono text-slate-900">{reviewingShop.telephone_2}</span>
+                    </div>
+                  )}
+                  {reviewingShop.telephone_3 && (
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Telephone 3</span>
+                      <span className="font-mono text-slate-900">{reviewingShop.telephone_3}</span>
+                    </div>
+                  )}
                   {reviewingShop.fax && (
                     <div>
                       <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Fax</span>
@@ -755,17 +772,17 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
-              ) : null}
+              )}
               
-              <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Billing Address</span>
-                <span className="text-slate-900 font-medium">
+              <div className="border-t border-gray-200/60 pt-2.5">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Full Address</span>
+                <span className="text-slate-900 font-medium leading-relaxed block">
                   {reviewingShop.address}
                   {reviewingShop.address_line_2 ? `, ${reviewingShop.address_line_2}` : ""}, {reviewingShop.city}, {reviewingShop.postcode}, {reviewingShop.country}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 border-t border-gray-200/60 pt-2.5">
                 <div>
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Company Reg No.</span>
                   <span className="font-mono text-slate-900">{reviewingShop.company_registration_number || "—"}</span>
@@ -798,7 +815,7 @@ export default function AdminDashboard() {
                   onChange={(e) => setModalStatus(e.target.value as any)}
                   className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-sans"
                 >
-                  <option value="pending" disabled>Pending Approval</option>
+                  <option value="pending">Pending Approval</option>
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
                 </select>
@@ -806,27 +823,50 @@ export default function AdminDashboard() {
             </div>
 
             {/* Actions Footer */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={() => setReviewingShop(null)}
-                className="py-2 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 text-sm font-semibold text-slate-600 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={actioningId !== null}
-                onClick={() => handleUpdateShop(reviewingShop.id, modalStatus, modalSageRef)}
-                className="inline-flex items-center gap-1.5 py-2 px-5 rounded-xl text-white bg-teal-600 hover:bg-teal-700 text-sm font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50"
-              >
-                {actioningId !== null ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
-                Save Registration
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-200">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={actioningId !== null}
+                  onClick={() => handleUpdateShop(reviewingShop.id, "rejected", modalSageRef)}
+                  className="inline-flex items-center gap-1.5 py-2 px-3.5 rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  disabled={actioningId !== null}
+                  onClick={() => handleUpdateShop(reviewingShop.id, "approved", modalSageRef)}
+                  className="inline-flex items-center gap-1.5 py-2 px-3.5 rounded-xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Approve
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewingShop(null)}
+                  className="py-2 px-3.5 rounded-xl border border-gray-300 hover:bg-gray-50 text-xs font-semibold text-slate-600 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={actioningId !== null}
+                  onClick={() => handleUpdateShop(reviewingShop.id, modalStatus, modalSageRef)}
+                  className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl text-white bg-teal-600 hover:bg-teal-700 text-xs font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {actioningId !== null ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5" />
+                  )}
+                  Save Registration
+                </button>
+              </div>
             </div>
           </div>
         </div>

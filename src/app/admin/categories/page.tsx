@@ -133,14 +133,14 @@ export default function AdminCategoriesPage() {
   // 4. Create Operations
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!catName.trim() || !catSlug.trim()) return;
+    if (!catName.trim()) return;
 
     setIsCreatingCat(true);
     setError(null);
     try {
       await api.post("/api/categories", {
         name: catName.trim(),
-        slug: catSlug.trim()
+        slug: slugify(catName)
       });
       setCatName("");
       setCatSlug("");
@@ -156,7 +156,7 @@ export default function AdminCategoriesPage() {
 
   const handleCreateSubcategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subName.trim() || !subSlug.trim() || !subParentId) return;
+    if (!subName.trim() || !subParentId) return;
 
     setIsCreatingSub(true);
     setError(null);
@@ -164,7 +164,7 @@ export default function AdminCategoriesPage() {
       await api.post("/api/subcategories", {
         category_id: Number(subParentId),
         name: subName.trim(),
-        slug: subSlug.trim()
+        slug: slugify(subName)
       });
       setSubName("");
       setSubSlug("");
@@ -263,9 +263,6 @@ export default function AdminCategoriesPage() {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Manage Categories</h1>
-              <p className="text-slate-500 text-sm mt-1">
-                Configure B2B catalog categories and nested subcategories for product sorting
-              </p>
             </div>
           </div>
         </div>
@@ -310,17 +307,6 @@ export default function AdminCategoriesPage() {
                     className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-600 font-bold uppercase tracking-wider">Slug URL Key</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. industrial-tools"
-                    value={catSlug}
-                    onChange={(e) => setCatSlug(slugify(e.target.value))}
-                    className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-mono"
-                  />
-                </div>
                 <button
                   type="submit"
                   disabled={isCreatingCat}
@@ -362,17 +348,6 @@ export default function AdminCategoriesPage() {
                     value={subName}
                     onChange={handleSubNameChange}
                     className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-600 font-bold uppercase tracking-wider">Slug URL Key</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. screwdrivers"
-                    value={subSlug}
-                    onChange={(e) => setSubSlug(slugify(e.target.value))}
-                    className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-mono"
                   />
                 </div>
                 <button
@@ -420,7 +395,6 @@ export default function AdminCategoriesPage() {
                             <ChevronDown className="w-4 h-4 text-teal-600 shrink-0" />
                             <div>
                               <span className="font-bold text-slate-900 text-base">{category.name}</span>
-                              <span className="text-xs text-slate-500 font-mono block">slug: /{category.slug}</span>
                             </div>
                           </div>
 
@@ -459,7 +433,6 @@ export default function AdminCategoriesPage() {
                                   <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                   <div>
                                     <span className="font-semibold text-slate-700 text-sm">{sub.name}</span>
-                                    <span className="text-[10px] text-slate-500 font-mono block">slug: /{category.slug}/{sub.slug}</span>
                                   </div>
                                 </div>
 

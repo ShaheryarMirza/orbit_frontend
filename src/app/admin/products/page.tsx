@@ -379,7 +379,6 @@ export default function AdminProductsPage() {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Product Inventory</h1>
-              <p className="text-slate-500 text-sm mt-1">Manage B2B catalog items, stock limits, and categories</p>
             </div>
           </div>
 

@@ -94,6 +94,9 @@ export default function AssistedOrderPage() {
   const [customerReference, setCustomerReference] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
 
+  // Cart Drawer State
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+
   // 1. Auth Guard - Admin & Salesperson only
   useEffect(() => {
     initialize();
@@ -102,7 +105,6 @@ export default function AssistedOrderPage() {
 
   useEffect(() => {
     if (isCheckingAuth) return;
-
     if (!isAuthenticated) {
       router.push("/login");
     } else if (user?.role !== "admin" && user?.role !== "salesperson") {
@@ -110,32 +112,23 @@ export default function AssistedOrderPage() {
     }
   }, [isCheckingAuth, isAuthenticated, user, router]);
 
-  // 2. Fetch Initial Catalog & Shop Data
-  const loadInitialData = async () => {
+  // 2. Fetch Initial Data
+  const fetchData = async () => {
     setIsLoadingData(true);
     setError(null);
     try {
-      const [shopsRes, productsRes, categoriesRes] = await Promise.all([
-        api.get("/admin/shops", { params: { page_size: 10000, approval_status: "approved" } }),
-        api.get("/products", { params: { page_size: 100000, is_active: true } }),
+      const [shopsRes, prodRes, catRes] = await Promise.all([
+        api.get("/admin/shops"),
+        api.get("/api/products?page_size=100000"),
         api.get("/api/categories")
       ]);
-
-      const shopList = shopsRes.data.items || [];
-      const prodList = productsRes.data.items || [];
-      setShops(shopList);
-      setProducts(prodList);
-      setCategories(categoriesRes.data || []);
-
-      // Default quantities to 1
-      const initialQtys: { [key: number]: number } = {};
-      prodList.forEach((prod: Product) => {
-        initialQtys[prod.id] = 1;
-      });
-      setQuantities(initialQtys);
+      const approvedShops = (shopsRes.data || []).filter((s: Shop) => s.approval_status === "approved");
+      setShops(approvedShops);
+      setProducts(prodRes.data.items || prodRes.data || []);
+      setCategories(catRes.data || []);
     } catch (err: any) {
       console.error(err);
-      setError("Failed to load approved customer accounts or catalog products. Check server connection.");
+      setError("Failed to load assisted order data. Please check connectivity.");
     } finally {
       setIsLoadingData(false);
     }
@@ -143,32 +136,32 @@ export default function AssistedOrderPage() {
 
   useEffect(() => {
     if (!isCheckingAuth && isAuthenticated && (user?.role === "admin" || user?.role === "salesperson")) {
-      loadInitialData();
+      fetchData();
     }
   }, [isCheckingAuth, isAuthenticated, user]);
 
-  // 3. Catalog Quantity Change
-  const handleQuantityChange = (productId: number, val: number) => {
-    setQuantities((prev) => ({
-      ...prev,
-      [productId]: Math.max(1, val),
-    }));
+  // 3. Category & Quantity Handling
+  const handleSelectCategory = (catSlug: string | null) => {
+    setSelectedCategorySlug(catSlug);
   };
 
-  // 4. Cart Operations
+  const handleQuantityChange = (productId: number, val: number) => {
+    const qty = Math.max(1, val);
+    setQuantities((prev) => ({ ...prev, [productId]: qty }));
+  };
+
   const handleAddToCart = (product: Product) => {
     const qtyToAdd = quantities[product.id] || 1;
     setCartItems((prev) => {
-      const existingIdx = prev.findIndex((item) => item.product.id === product.id);
-      if (existingIdx > -1) {
+      const existingIndex = prev.findIndex((item) => item.product.id === product.id);
+      if (existingIndex > -1) {
         const updated = [...prev];
-        updated[existingIdx].quantity += qtyToAdd;
+        updated[existingIndex].quantity += qtyToAdd;
         return updated;
       }
       return [...prev, { product, quantity: qtyToAdd }];
     });
-
-    // Reset card quantity selection to 1
+    // Reset local selector qty
     setQuantities((prev) => ({ ...prev, [product.id]: 1 }));
   };
 
@@ -188,93 +181,80 @@ export default function AssistedOrderPage() {
     setCartItems((prev) => prev.filter((item) => item.product.id !== productId));
   };
 
-  // 5. Category Selection
-  const handleSelectCategory = (catSlug: string | null) => {
-    setSelectedCategorySlug(catSlug);
-  };
-
-  // Filter products by selected category and search query
-  const query = searchQuery.toLowerCase().trim();
-  const filteredProducts = products.filter((prod) => {
-    // Filter by Category
-    if (selectedCategorySlug) {
-      const catObj = categories.find((c) => c.slug === selectedCategorySlug);
-      if (catObj && prod.category_id !== catObj.id) {
-        return false;
-      }
-    }
-
-    // Filter by Search Query
-    if (!query) return true;
-    return (
-      prod.product_name.toLowerCase().includes(query) ||
-      prod.product_code.toLowerCase().includes(query) ||
-      (prod.description && prod.description.toLowerCase().includes(query))
-    );
-  });
-
-  // 6. Calculations
-  const subtotal = cartItems.reduce((sum, item) => {
+  // 4. Calculations
+  const subtotal = cartItems.reduce((acc, item) => {
     const priceNum = typeof item.product.price === "string" ? parseFloat(item.product.price) : item.product.price;
-    return sum + (priceNum * item.quantity);
+    return acc + priceNum * item.quantity;
   }, 0);
 
-  const discountValNum = parseFloat(discountValue) || 0;
   let calculatedDiscountAmount = 0;
+  const discountValNum = parseFloat(discountValue) || 0;
   if (discountType === "fixed") {
     calculatedDiscountAmount = Math.min(subtotal, discountValNum);
   } else if (discountType === "percentage") {
-    const pct = Math.min(100, Math.max(0, discountValNum));
-    calculatedDiscountAmount = (subtotal * pct) / 100;
+    calculatedDiscountAmount = subtotal * (Math.min(100, Math.max(0, discountValNum)) / 100);
   }
 
   const netSubtotal = Math.max(0, subtotal - calculatedDiscountAmount);
 
-  // Line-item level VAT calculation using each product's vat_rate
-  const totalVat = cartItems.reduce((sum, item) => {
+  // Dynamic VAT calculation using each product's specific vat_rate
+  const totalVat = cartItems.reduce((acc, item) => {
     const priceNum = typeof item.product.price === "string" ? parseFloat(item.product.price) : item.product.price;
-    const vatRate = item.product.vat_rate !== undefined ? item.product.vat_rate : 20.0;
-    const lineSubtotal = priceNum * item.quantity;
-    
-    // Proportional discount ratio per line item
-    const lineRatio = subtotal > 0 ? lineSubtotal / subtotal : 0;
-    const lineDiscount = calculatedDiscountAmount * lineRatio;
-    const lineNet = Math.max(0, lineSubtotal - lineDiscount);
-
-    return sum + (lineNet * (vatRate / 100));
+    const vatRateVal = item.product.vat_rate !== undefined ? item.product.vat_rate : 20.0;
+    const lineGross = priceNum * item.quantity;
+    const ratio = subtotal > 0 ? (subtotal - calculatedDiscountAmount) / subtotal : 1;
+    const lineNet = lineGross * ratio;
+    return acc + lineNet * (vatRateVal / 100);
   }, 0);
 
   const finalTotal = netSubtotal + totalVat;
+  const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
-  // 7. Submit Assisted Order
+  // Filter products by Category & Search
+  const filteredProducts = products.filter((prod) => {
+    // 1. Category Filter
+    if (selectedCategorySlug) {
+      const selectedCategory = categories.find((c) => c.slug === selectedCategorySlug);
+      if (selectedCategory && prod.category_id !== selectedCategory.id) {
+        return false;
+      }
+    }
+    // 2. Search Query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchName = prod.product_name.toLowerCase().includes(q);
+      const matchCode = prod.product_code.toLowerCase().includes(q);
+      const matchDesc = prod.description ? prod.description.toLowerCase().includes(q) : false;
+      return matchName || matchCode || matchDesc;
+    }
+    return true;
+  });
+
+  // 5. Submit Order Handler
   const handleSubmitAssistedOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccessMsg(null);
-
     if (!selectedShopId) {
-      setError("Please select a registered customer account for this order.");
+      setError("Please select a customer shop account for this assisted order.");
       return;
     }
-
     if (cartItems.length === 0) {
-      setError("Please add at least one product to the order cart.");
+      setError("Cart is empty. Add at least one product before submitting.");
       return;
     }
 
     setIsSubmitting(true);
+    setError(null);
 
     const payload = {
       shop_id: Number(selectedShopId),
       items: cartItems.map((item) => ({
         product_id: item.product.id,
-        quantity: item.quantity,
-        vat_rate: item.product.vat_rate !== undefined ? item.product.vat_rate : 20.0,
+        quantity: item.quantity
       })),
       discount_type: discountType || null,
-      discount_value: discountType && discountValNum > 0 ? discountValNum : null,
+      discount_value: discountValue ? parseFloat(discountValue) : null,
       customer_reference: customerReference.trim() || null,
-      internal_notes: internalNotes.trim() || null,
+      internal_notes: internalNotes.trim() || null
     };
 
     try {
@@ -286,6 +266,7 @@ export default function AssistedOrderPage() {
       setDiscountType("");
       setDiscountValue("");
       setSelectedShopId("");
+      setIsCartDrawerOpen(false);
       setTimeout(() => {
         router.push("/orders");
       }, 2000);
@@ -294,7 +275,7 @@ export default function AssistedOrderPage() {
       if (err.response?.data?.detail) {
         setError(err.response.data.detail);
       } else {
-        setError("Failed to create assisted order. Please check selections.");
+        setError("Failed to create assisted order.");
       }
     } finally {
       setIsSubmitting(false);
@@ -311,13 +292,13 @@ export default function AssistedOrderPage() {
   }
 
   return (
-    <div className="flex-1 bg-gray-50 text-slate-800 min-h-screen py-10 px-4 sm:px-6 lg:px-8">
+    <div className="flex-1 bg-gray-50 text-slate-800 min-h-screen py-10 px-4 sm:px-6 lg:px-8 relative">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Header Banner */}
-        <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-8 sm:p-10 shadow-sm">
+        <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                 <Briefcase className="w-3.5 h-3.5" />
                 Staff Sales Mode • Assisted Order Terminal
@@ -325,23 +306,38 @@ export default function AssistedOrderPage() {
               <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight font-sans">
                 Assisted Order Catalog
               </h1>
-              <p className="text-slate-500 text-sm max-w-xl">
-                Browse catalog inventory and place direct sales orders on behalf of registered B2B customer accounts.
-              </p>
             </div>
             
-            {/* Search Input */}
-            <div className="relative w-full md:max-w-md">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
+            {/* Search Input & Cart Trigger */}
+            <div className="flex items-center gap-3 w-full md:max-w-lg">
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Search className="h-4.5 w-4.5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search catalog products by name or code..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-11 pr-4 py-2.5 border border-gray-300 bg-white text-slate-900 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all text-sm font-sans"
+                />
               </div>
-              <input
-                type="text"
-                placeholder="Search catalog products by name or code..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all text-sm font-sans"
-              />
+
+              <button
+                type="button"
+                onClick={() => setIsCartDrawerOpen(true)}
+                className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-4 rounded-2xl shadow-sm transition-all cursor-pointer shrink-0"
+              >
+                <div className="relative">
+                  <ShoppingCart className="w-4.5 h-4.5" />
+                  {totalCartCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center font-mono">
+                      {totalCartCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs hidden sm:inline">View Cart</span>
+              </button>
             </div>
           </div>
         </div>
@@ -361,7 +357,7 @@ export default function AssistedOrderPage() {
           </div>
         )}
 
-        {/* Main 3-Column Layout (Sidebar Category Filter + Catalog Grid + Assisted Cart Sidebar) */}
+        {/* Layout (Sidebar Category Filter + 5-Column Catalog Grid) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* 1. Sidebar Categories (3 Columns) */}
@@ -373,7 +369,6 @@ export default function AssistedOrderPage() {
               </h3>
               
               <div className="space-y-1.5">
-                {/* All Products Option */}
                 <button
                   onClick={() => handleSelectCategory(null)}
                   className={`w-full text-left py-2.5 px-3 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
@@ -406,8 +401,8 @@ export default function AssistedOrderPage() {
             </div>
           </div>
 
-          {/* 2. Catalog Products Grid (5 Columns) */}
-          <div className="lg:col-span-5 space-y-6">
+          {/* 2. Catalog Products Grid (9 Columns - 5 Cards per Row) */}
+          <div className="lg:col-span-9 space-y-6">
             {isLoadingData ? (
               <div className="flex flex-col items-center justify-center py-24 gap-4 bg-white border border-gray-200 rounded-3xl">
                 <Loader2 className="w-10 h-10 text-teal-600 animate-spin" />
@@ -422,7 +417,7 @@ export default function AssistedOrderPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
                 {filteredProducts.map((product) => {
                   const currentQty = quantities[product.id] || 1;
                   const priceNum = typeof product.price === "string" ? parseFloat(product.price) : product.price;
@@ -432,21 +427,21 @@ export default function AssistedOrderPage() {
                   return (
                     <div
                       key={product.id}
-                      className="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between"
+                      className="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                     >
                       <div>
-                        {/* Product Image */}
-                        <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden border-b border-gray-100 relative">
+                        {/* Fixed-Aspect-Ratio Image Container with Object-Contain */}
+                        <div className="aspect-square bg-gray-50/80 flex items-center justify-center p-3 overflow-hidden border-b border-gray-100 relative">
                           {product.image_url ? (
                             <img
                               src={product.image_url.startsWith("http") ? product.image_url : (API_BASE_URL + product.image_url)}
                               alt={product.product_name}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                             />
                           ) : (
-                            <div className="flex flex-col items-center justify-center text-gray-400 space-y-2">
-                              <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
-                              <span className="text-[10px] font-bold uppercase font-mono tracking-wider bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                            <div className="flex flex-col items-center justify-center text-gray-400 space-y-1">
+                              <ShoppingBag className="w-8 h-8 stroke-[1.5]" />
+                              <span className="text-[9px] font-bold uppercase font-mono tracking-wider bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
                                 {product.product_code}
                               </span>
                             </div>
@@ -454,62 +449,56 @@ export default function AssistedOrderPage() {
                         </div>
 
                         {/* Product Info */}
-                        <div className="p-4 space-y-2">
-                          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono">
+                        <div className="p-3 space-y-1">
+                          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider font-mono">
                             {product.product_code}
                           </span>
-                          <h3 className="text-sm font-extrabold text-slate-900 leading-tight line-clamp-2">
+                          <h3 className="text-xs font-extrabold text-slate-900 leading-snug line-clamp-2" title={product.product_name}>
                             {product.product_name}
                           </h3>
-                          {product.description && (
-                            <p className="text-xs text-slate-500 line-clamp-2 leading-normal font-normal">
-                              {product.description}
-                            </p>
-                          )}
                         </div>
                       </div>
 
                       {/* Pricing & Add to Cart Controls */}
-                      <div className="p-4 pt-0 space-y-3">
-                        <div className="flex flex-col gap-0.5 border-t border-gray-100 pt-3">
-                          <span className="text-lg font-extrabold text-slate-900 flex items-baseline gap-1 font-mono">
+                      <div className="p-3 pt-0 space-y-2">
+                        <div className="flex flex-col gap-0.5 border-t border-gray-100 pt-2">
+                          <span className="text-sm font-extrabold text-slate-900 flex items-baseline gap-1 font-mono">
                             £{priceNum.toFixed(2)}
-                            <span className="text-[10px] text-slate-500 font-normal normal-case">ex. VAT</span>
+                            <span className="text-[9px] text-slate-500 font-normal normal-case">ex. VAT</span>
                           </span>
-                          <span className="text-xs text-teal-600 font-bold font-mono">
-                            £{priceIncVat.toFixed(2)} <span className="text-[10px] text-teal-500 font-normal">inc. VAT ({vatRateVal}%)</span>
+                          <span className="text-[10px] text-teal-600 font-bold font-mono">
+                            £{priceIncVat.toFixed(2)} <span className="text-[9px] text-teal-500 font-normal">inc. VAT</span>
                           </span>
                         </div>
 
                         {/* Qty Selector & Add Button */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between border border-gray-200 bg-gray-50 rounded-xl p-1">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between border border-gray-200 bg-gray-50 rounded-lg p-0.5">
                             <button
                               type="button"
                               onClick={() => handleQuantityChange(product.id, currentQty - 1)}
-                              className="p-1 hover:bg-gray-200 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                              className="p-1 hover:bg-gray-200 rounded text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                             >
-                              <Minus className="w-3.5 h-3.5" />
+                              <Minus className="w-3 h-3" />
                             </button>
-                            <span className="text-xs font-bold text-slate-800 w-8 text-center font-mono">
+                            <span className="text-xs font-bold text-slate-800 w-6 text-center font-mono">
                               {currentQty}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleQuantityChange(product.id, currentQty + 1)}
-                              className="p-1 hover:bg-gray-200 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                              className="p-1 hover:bg-gray-200 rounded text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                             >
-                              <Plus className="w-3.5 h-3.5" />
+                              <Plus className="w-3 h-3" />
                             </button>
                           </div>
 
                           <button
                             type="button"
                             onClick={() => handleAddToCart(product)}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-white bg-teal-600 hover:bg-teal-700 text-xs font-bold shadow-xs transition-all cursor-pointer"
+                            className="w-full flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-white bg-teal-600 hover:bg-teal-700 text-[11px] font-bold shadow-xs transition-all cursor-pointer"
                           >
-                            <Plus className="w-3.5 h-3.5" />
-                            Add to Assisted Cart
+                            <Plus className="w-3 h-3" /> Add to Cart
                           </button>
                         </div>
                       </div>
@@ -520,18 +509,56 @@ export default function AssistedOrderPage() {
             )}
           </div>
 
-          {/* 3. Assisted Order Cart & Checkout Panel (4 Columns) */}
-          <div className="lg:col-span-4 space-y-6">
-            <form onSubmit={handleSubmitAssistedOrder} className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm space-y-6">
-              
-              <div className="border-b border-gray-100 pb-4">
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5 text-teal-600" />
-                  Assisted Cart & Checkout
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Configure customer and discount details</p>
-              </div>
+        </div>
 
+      </div>
+
+      {/* Floating View Cart Pill Button */}
+      <button
+        onClick={() => setIsCartDrawerOpen(true)}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-3 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 px-6 rounded-full shadow-2xl transition-all cursor-pointer hover:scale-105"
+      >
+        <div className="relative">
+          <ShoppingCart className="w-5 h-5" />
+          {totalCartCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[10px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center font-mono border-2 border-teal-600">
+              {totalCartCount}
+            </span>
+          )}
+        </div>
+        <span className="text-sm font-sans font-bold">Assisted Cart</span>
+        <span className="font-mono text-sm font-extrabold border-l border-teal-500/60 pl-3">
+          £{finalTotal.toFixed(2)}
+        </span>
+      </button>
+
+      {/* Slide-out Cart Drawer Modal */}
+      {isCartDrawerOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end">
+          <div className="bg-white w-full max-w-md h-full flex flex-col justify-between shadow-2xl animate-in slide-in-from-right duration-200 text-slate-800">
+            
+            {/* Drawer Header */}
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-teal-500/10 rounded-xl">
+                  <ShoppingCart className="w-5 h-5 text-teal-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 font-sans">Assisted Order Cart</h3>
+                  <p className="text-xs text-slate-500">Review selected products and customer account</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCartDrawerOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-slate-800 rounded-lg hover:bg-gray-200/50 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Drawer Form Body */}
+            <form onSubmit={handleSubmitAssistedOrder} className="flex-1 overflow-y-auto p-6 space-y-6">
+              
               {/* Mandatory Customer Selection Dropdown */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -575,11 +602,13 @@ export default function AssistedOrderPage() {
                 </span>
                 
                 {cartItems.length === 0 ? (
-                  <div className="p-4 border border-dashed border-gray-200 rounded-2xl text-center text-slate-400 text-xs py-8">
-                    No products added yet. Click "+ Add to Assisted Cart" on any catalog item.
+                  <div className="p-6 border border-dashed border-gray-200 rounded-2xl text-center text-slate-400 text-xs space-y-2">
+                    <ShoppingBag className="w-8 h-8 mx-auto text-slate-300" />
+                    <p>No products added yet.</p>
+                    <p className="text-[11px] text-slate-400">Click "+ Add to Cart" on any product in the catalog.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                     {cartItems.map((item) => {
                       const pNum = typeof item.product.price === "string" ? parseFloat(item.product.price) : item.product.price;
                       const lineExVat = pNum * item.quantity;
@@ -602,7 +631,7 @@ export default function AssistedOrderPage() {
                               >
                                 <Minus className="w-3 h-3" />
                               </button>
-                              <span className="w-5 text-center font-bold font-mono">{item.quantity}</span>
+                              <span className="w-5 text-center font-bold font-mono text-xs">{item.quantity}</span>
                               <button
                                 type="button"
                                 onClick={() => handleUpdateCartQty(item.product.id, item.quantity + 1)}
@@ -612,7 +641,7 @@ export default function AssistedOrderPage() {
                               </button>
                             </div>
 
-                            <span className="font-mono font-bold text-slate-900 w-16 text-right">
+                            <span className="font-mono font-bold text-slate-900 w-14 text-right">
                               £{lineExVat.toFixed(2)}
                             </span>
 
@@ -631,7 +660,7 @@ export default function AssistedOrderPage() {
                 )}
               </div>
 
-              {/* Discount Section */}
+              {/* Staff Discount */}
               <div className="space-y-3 pt-2 border-t border-gray-100">
                 <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                   <Tag className="w-3.5 h-3.5 text-teal-600" />
@@ -659,7 +688,7 @@ export default function AssistedOrderPage() {
                         : "bg-white text-slate-600 border-gray-300 hover:bg-gray-50"
                     }`}
                   >
-                    <PoundSterling className="w-3 h-3" /> Flat (£)
+                    <PoundSterling className="w-3 h-3" /> Flat
                   </button>
                   <button
                     type="button"
@@ -670,22 +699,20 @@ export default function AssistedOrderPage() {
                         : "bg-white text-slate-600 border-gray-300 hover:bg-gray-50"
                     }`}
                   >
-                    <Percent className="w-3 h-3" /> Percent (%)
+                    <Percent className="w-3 h-3" /> %
                   </button>
                 </div>
 
                 {discountType && (
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      placeholder={discountType === "fixed" ? "Enter discount amount in £" : "Enter percentage (e.g. 10)"}
-                      value={discountValue}
-                      onChange={(e) => setDiscountValue(e.target.value)}
-                      className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-xs font-mono"
-                    />
-                  </div>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder={discountType === "fixed" ? "Enter discount amount (£)" : "Enter percentage (e.g. 10)"}
+                    value={discountValue}
+                    onChange={(e) => setDiscountValue(e.target.value)}
+                    className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-xs font-mono"
+                  />
                 )}
               </div>
 
@@ -701,8 +728,8 @@ export default function AssistedOrderPage() {
                 />
               </div>
 
-              {/* Real-time Order Summary Calculations */}
-              <div className="space-y-2.5 pt-3 border-t border-gray-200 text-xs">
+              {/* Financial Calculations Footer */}
+              <div className="space-y-2 pt-3 border-t border-gray-200 text-xs">
                 <div className="flex justify-between text-slate-600">
                   <span>Gross Subtotal (ex. VAT)</span>
                   <span className="font-mono font-bold text-slate-900">£{subtotal.toFixed(2)}</span>
@@ -710,9 +737,7 @@ export default function AssistedOrderPage() {
 
                 {calculatedDiscountAmount > 0 && (
                   <div className="flex justify-between text-rose-600 font-semibold">
-                    <span>
-                      Discount ({discountType === "percentage" ? `${discountValNum}%` : "Fixed"})
-                    </span>
+                    <span>Discount ({discountType === "percentage" ? `${parseFloat(discountValue)}%` : "Fixed"})</span>
                     <span className="font-mono">-£{calculatedDiscountAmount.toFixed(2)}</span>
                   </div>
                 )}
@@ -742,7 +767,7 @@ export default function AssistedOrderPage() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Creating Assisted Order...
+                    Creating Order...
                   </>
                 ) : (
                   <>
@@ -752,11 +777,10 @@ export default function AssistedOrderPage() {
                 )}
               </button>
             </form>
+
           </div>
-
         </div>
-
-      </div>
+      )}
     </div>
   );
 }

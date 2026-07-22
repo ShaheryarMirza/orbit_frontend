@@ -229,7 +229,6 @@ export default function AdminTeamPage() {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">Team Management</h1>
-              <p className="text-slate-505 text-sm mt-1 font-medium">Configure and manage salesperson and administrator accounts</p>
             </div>
           </div>
           <button
