@@ -119,14 +119,15 @@ export default function AssistedOrderPage() {
     setError(null);
     try {
       const [shopsRes, prodRes, catRes] = await Promise.all([
-        api.get("/admin/shops"),
+        api.get("/admin/shops?page_size=10000"),
         api.get("/api/products?page_size=100000"),
         api.get("/api/categories")
       ]);
-      const approvedShops = (shopsRes.data || []).filter((s: Shop) => s.approval_status === "approved");
+      const rawShops = shopsRes.data.items || shopsRes.data || [];
+      const approvedShops = (Array.isArray(rawShops) ? rawShops : []).filter((s: Shop) => s.approval_status === "approved");
       setShops(approvedShops);
       setProducts(prodRes.data.items || prodRes.data || []);
-      setCategories(catRes.data || []);
+      setCategories(catRes.data.items || catRes.data || []);
     } catch (err: any) {
       console.error(err);
       setError("Failed to load assisted order data. Please check connectivity.");
