@@ -359,10 +359,13 @@ export default function ShopCatalog() {
                         </div>
 
                         <div className="space-y-3.5">
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col gap-0.5">
                             <span className="text-xl font-extrabold text-slate-905 flex items-baseline gap-1 font-mono">
                               £{priceNum.toFixed(2)}
                               <span className="text-[10px] text-slate-500 font-normal normal-case">ex. VAT</span>
+                            </span>
+                            <span className="text-xs text-teal-600 font-bold font-mono">
+                              £{(priceNum * (1 + (product.vat_rate ?? 20) / 100)).toFixed(2)} <span className="text-[10px] text-teal-500 font-normal">inc. VAT ({product.vat_rate ?? 20}%)</span>
                             </span>
                           </div>
                            {/* Quantity Selector & Add to Cart */}

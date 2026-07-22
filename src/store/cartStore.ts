@@ -5,6 +5,7 @@ export interface Product {
   product_code: string;
   product_name: string;
   price: number | string;
+  vat_rate?: number;
   quantity: number; // stock level
   image_url: string | null;
   is_active: boolean;

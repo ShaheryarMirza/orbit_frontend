@@ -157,7 +157,9 @@ export default function CartPage() {
                 const priceNum = typeof item.product.price === "string"
                   ? parseFloat(item.product.price)
                   : item.product.price;
+                const vatRate = item.product.vat_rate !== undefined ? item.product.vat_rate : 20;
                 const lineTotal = priceNum * item.quantity;
+                const lineTotalIncVat = lineTotal * (1 + vatRate / 100);
 
                 return (
                   <div
@@ -186,7 +188,7 @@ export default function CartPage() {
                           </p>
                         )}
                         <p className="text-xs text-slate-500 font-mono">{item.product.product_code}</p>
-                        <p className="text-xs text-slate-400">£{priceNum.toFixed(2)} ex. VAT each</p>
+                        <p className="text-xs text-slate-400">£{priceNum.toFixed(2)} ex. VAT each ({vatRate}% VAT)</p>
                       </div>
                     </div>
 
@@ -215,10 +217,15 @@ export default function CartPage() {
 
                       {/* Line Total Price & Delete */}
                       <div className="flex items-center gap-4">
-                        <span className="text-base font-extrabold text-slate-900 w-28 text-right font-mono flex items-baseline justify-end gap-1">
-                          £{lineTotal.toFixed(2)}
-                          <span className="text-[10px] text-slate-500 font-normal normal-case">ex. VAT</span>
-                        </span>
+                        <div className="flex flex-col items-end w-32">
+                          <span className="text-base font-extrabold text-slate-900 font-mono flex items-baseline justify-end gap-1">
+                            £{lineTotal.toFixed(2)}
+                            <span className="text-[10px] text-slate-500 font-normal normal-case">ex. VAT</span>
+                          </span>
+                          <span className="text-xs text-teal-600 font-bold font-mono">
+                            £{lineTotalIncVat.toFixed(2)} <span className="text-[10px] text-teal-500 font-normal">inc. VAT</span>
+                          </span>
+                        </div>
                         <button
                           disabled={isPlacingOrder}
                           onClick={() => removeItem(item.product.id)}
@@ -259,20 +266,31 @@ export default function CartPage() {
               </div>
 
               {/* Total calculations */}
-              <div className="space-y-3 pt-2">
-                <div className="flex justify-between text-sm text-slate-505">
-                  <span>Subtotal</span>
-                  <span className="font-mono text-slate-900 font-bold">£{subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-slate-505">
-                  <span>VAT (20%)</span>
-                  <span className="font-mono text-slate-900 font-bold">£{(subtotal * 0.20).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-base font-extrabold text-slate-950 border-t border-gray-200 pt-3">
-                  <span>Total Price</span>
-                  <span className="font-mono text-teal-600">£{(subtotal * 1.20).toFixed(2)}</span>
-                </div>
-              </div>
+              {(() => {
+                const totalVat = items.reduce((sum, item) => {
+                  const pNum = typeof item.product.price === "string" ? parseFloat(item.product.price) : item.product.price;
+                  const vRate = item.product.vat_rate !== undefined ? item.product.vat_rate : 20;
+                  return sum + (pNum * item.quantity * (vRate / 100));
+                }, 0);
+                const grandTotal = subtotal + totalVat;
+
+                return (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex justify-between text-sm text-slate-505">
+                      <span>Subtotal (ex. VAT)</span>
+                      <span className="font-mono text-slate-900 font-bold">£{subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-slate-505">
+                      <span>Estimated VAT</span>
+                      <span className="font-mono text-slate-900 font-bold">£{totalVat.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-base font-extrabold text-slate-950 border-t border-gray-200 pt-3">
+                      <span>Total Price (inc. VAT)</span>
+                      <span className="font-mono text-teal-600">£{grandTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Place Order CTA */}
               <button

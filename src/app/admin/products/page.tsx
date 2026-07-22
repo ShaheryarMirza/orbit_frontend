@@ -42,6 +42,7 @@ interface Product {
   description: string | null;
   image_url: string | null;
   price: string | number;
+  vat_rate: number;
   quantity: number;
   is_active: boolean;
 }
@@ -75,6 +76,7 @@ export default function AdminProductsPage() {
   const [productName, setProductName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  const [vatRate, setVatRate] = useState("20");
   const [quantity, setQuantity] = useState("0");
   const [selectedCatId, setSelectedCatId] = useState<number | "">("");
   const [selectedSubId, setSelectedSubId] = useState<number | "">("");
@@ -143,6 +145,7 @@ export default function AdminProductsPage() {
     setProductName("");
     setDescription("");
     setPrice("");
+    setVatRate("20");
     setQuantity("0");
     setSelectedCatId("");
     setSelectedSubId("");
@@ -159,6 +162,7 @@ export default function AdminProductsPage() {
     setProductName(product.product_name);
     setDescription(product.description || "");
     setPrice(typeof product.price === "number" ? product.price.toString() : product.price);
+    setVatRate(product.vat_rate !== undefined ? product.vat_rate.toString() : "20");
     setQuantity(product.quantity.toString());
     setSelectedCatId(product.category_id || "");
     setSelectedSubId(product.subcategory_id || "");
@@ -197,6 +201,7 @@ export default function AdminProductsPage() {
       product_name: productName.trim(),
       description: description.trim() || null,
       price: Number(price),
+      vat_rate: parseFloat(vatRate) >= 0 ? parseFloat(vatRate) : 20.0,
       category_id: selectedCatId ? Number(selectedCatId) : null,
       subcategory_id: selectedSubId ? Number(selectedSubId) : null,
       is_active: isActive
@@ -515,7 +520,8 @@ export default function AdminProductsPage() {
                     <th className="py-4 px-6">Name</th>
                     <th className="py-4 px-6 w-1/4">Description</th>
                     <th className="py-4 px-6">Category / Sub</th>
-                    <th className="py-4 px-6 text-right">Price (ex. VAT)</th>
+                    <th className="py-4 px-6 text-right">Price (ex. / inc. VAT)</th>
+                    <th className="py-4 px-6 text-center">VAT Rate</th>
                     <th className="py-4 px-6">Status</th>
                     <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
@@ -523,6 +529,8 @@ export default function AdminProductsPage() {
                 <tbody className="divide-y divide-gray-100 text-sm">
                   {filteredProducts.map((product) => {
                     const priceNum = typeof product.price === "string" ? parseFloat(product.price) : product.price;
+                    const vatRateVal = product.vat_rate !== undefined ? product.vat_rate : 20;
+                    const priceIncVat = priceNum * (1 + vatRateVal / 100);
                     const catLabel = categories.find((c) => c.id === product.category_id)?.name || "—";
                     
                     // Flattened find for subcategory
@@ -594,8 +602,18 @@ export default function AdminProductsPage() {
                         </td>
 
                         {/* Price */}
-                        <td className="py-4.5 px-6 text-right font-mono font-bold text-slate-900">
-                          £{priceNum.toFixed(2)}
+                        <td className="py-4.5 px-6 text-right font-mono">
+                          <div className="flex flex-col items-end">
+                            <span className="font-bold text-slate-900">£{priceNum.toFixed(2)} <span className="text-[10px] text-slate-400 font-normal">ex. VAT</span></span>
+                            <span className="text-xs text-teal-600 font-semibold">£{priceIncVat.toFixed(2)} <span className="text-[10px] text-teal-500 font-normal">inc. VAT</span></span>
+                          </div>
+                        </td>
+
+                        {/* VAT Rate */}
+                        <td className="py-4.5 px-6 text-center font-mono">
+                          <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg font-bold border border-slate-200">
+                            {vatRateVal}%
+                          </span>
                         </td>
 
 
@@ -719,6 +737,25 @@ export default function AdminProductsPage() {
                   </div>
                 </div>
 
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">VAT Rate (%)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="any"
+                      min={0}
+                      required
+                      placeholder="20"
+                      value={vatRate}
+                      onChange={(e) => setVatRate(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-gray-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-mono"
+                    />
+                    <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 text-sm font-bold">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 {/* Category Dropdown */}
                 <div className="space-y-1">
                   <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Category</label>
@@ -736,22 +773,22 @@ export default function AdminProductsPage() {
                     ))}
                   </select>
                 </div>
-              </div>
 
-              {/* Subcategory Dropdown (dynamically filtered by parent category selection) */}
-              <div className="space-y-1">
-                <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Subcategory</label>
-                <select
-                  disabled={!selectedCatId}
-                  value={selectedSubId}
-                  onChange={(e) => setSelectedSubId(e.target.value ? Number(e.target.value) : "")}
-                  className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-sans disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">Unassigned</option>
-                  {availableSubcategories.map((sub) => (
-                    <option key={sub.id} value={sub.id}>{sub.name}</option>
-                  ))}
-                </select>
+                {/* Subcategory Dropdown (dynamically filtered by parent category selection) */}
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Subcategory</label>
+                  <select
+                    disabled={!selectedCatId}
+                    value={selectedSubId}
+                    onChange={(e) => setSelectedSubId(e.target.value ? Number(e.target.value) : "")}
+                    className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Unassigned</option>
+                    {availableSubcategories.map((sub) => (
+                      <option key={sub.id} value={sub.id}>{sub.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Product Picture Selection */}
