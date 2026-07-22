@@ -26,7 +26,10 @@ interface Shop {
   id: number;
   user_id: number;
   company_name: string;
+  contact_name?: string | null;
   phone_number: string;
+  telephone_2?: string | null;
+  telephone_3?: string | null;
   address: string;
   address_line_2: string | null;
   postcode: string;

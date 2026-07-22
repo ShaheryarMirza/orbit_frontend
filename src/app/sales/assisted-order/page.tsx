@@ -23,7 +23,8 @@ import {
   CreditCard,
   Tag,
   Percent,
-  PoundSterling
+  PoundSterling,
+  X
 } from "lucide-react";
 
 interface Shop {
