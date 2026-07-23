@@ -338,7 +338,7 @@ export default function OrderHistoryPage() {
                   <tr className="border-b border-gray-200 bg-gray-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
                     <th className="py-4 px-6">Order Number</th>
                     <th className="py-4 px-6">Date Placed</th>
-                    {user?.role === "admin" && <th className="py-4 px-6">Salesperson</th>}
+                    {(user?.role === "admin" || user?.role === "root_admin") && <th className="py-4 px-6">Salesperson</th>}
                     <th className="py-4 px-6">Status</th>
                     <th className="py-4 px-6">Sage Sync Status</th>
                     <th className="py-4 px-6">Final Total</th>
@@ -388,7 +388,7 @@ export default function OrderHistoryPage() {
                         </td>
 
                         {/* Salesperson (Admin only) */}
-                        {user?.role === "admin" && (
+                        {(user?.role === "admin" || user?.role === "root_admin") && (
                           <td className="py-4.5 px-6 text-slate-700">
                             {order.salesperson ? (
                               <span className="text-xs text-indigo-700 font-bold">

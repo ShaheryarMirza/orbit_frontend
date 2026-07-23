@@ -155,7 +155,7 @@ export default function AdminDashboard() {
 
     if (!isAuthenticated) {
       router.push("/login");
-    } else if (user?.role !== "admin") {
+    } else if (user?.role !== "admin" && user?.role !== "root_admin") {
       router.push("/");
     }
   }, [isCheckingAuth, isAuthenticated, user, router]);
@@ -253,7 +253,7 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    if (!isCheckingAuth && isAuthenticated && user?.role === "admin") {
+    if (!isCheckingAuth && isAuthenticated && (user?.role === "admin" || user?.role === "root_admin")) {
       fetchShops();
       fetchPendingShops();
       fetchResetRequests();
@@ -342,7 +342,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (isCheckingAuth || !isAuthenticated || user?.role !== "admin") {
+  if (isCheckingAuth || !isAuthenticated || (user?.role !== "admin" && user?.role !== "root_admin")) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-4 bg-gray-50 text-slate-800">
         <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />

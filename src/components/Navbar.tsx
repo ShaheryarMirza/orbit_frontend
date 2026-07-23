@@ -50,7 +50,7 @@ export default function Navbar() {
                   Orders
                 </Link>
 
-                {user.role === "admin" && (
+                {(user.role === "admin" || user.role === "root_admin") && (
                   <>
                     <Link
                       href="/admin/dashboard"
@@ -143,7 +143,7 @@ export default function Navbar() {
                   <UserIcon className="w-4 h-4 text-teal-600" />
                   <span className="font-semibold text-slate-800">{user.name}</span>
                   <span className="text-xs text-slate-500 bg-gray-200 px-2 py-0.5 rounded-full capitalize font-medium">
-                    {user.role}
+                    {user.role === "root_admin" ? "Root Admin" : user.role}
                   </span>
                 </div>
                 {user.role === "shop_owner" && (

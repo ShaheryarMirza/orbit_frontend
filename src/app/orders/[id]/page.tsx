@@ -335,7 +335,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
               <div className="border-t border-gray-200 pt-4 space-y-3">
                 <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Order Actions</span>
                 <div className="flex flex-col gap-2">
-                  {user?.role === "admin" && order.sage_sync_status === "failed" && (
+                  {(user?.role === "admin" || user?.role === "root_admin") && order.sage_sync_status === "failed" && (
                     <button
                       onClick={handleRetrySync}
                       disabled={isActioning}
@@ -344,7 +344,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                       {isActioning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Retry Sage Sync"}
                     </button>
                   )}
-                  {(user?.role === "admin" || (user?.role === "salesperson" && order.salesperson_id === user.id) || user?.role === "shop_owner") && (
+                  {(user?.role === "admin" || user?.role === "root_admin" || (user?.role === "salesperson" && order.salesperson_id === user.id) || user?.role === "shop_owner") && (
                     <button
                       onClick={handleCancelOrder}
                       disabled={isActioning}

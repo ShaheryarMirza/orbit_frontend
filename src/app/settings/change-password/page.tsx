@@ -80,7 +80,7 @@ export default function ChangePasswordPage() {
 
       // Redirect after a short delay
       setTimeout(() => {
-        if (user?.role === "admin") {
+        if (user?.role === "admin" || user?.role === "root_admin") {
           router.push("/admin/dashboard");
         } else if (user?.role === "salesperson") {
           router.push("/sales/dashboard");
@@ -118,7 +118,7 @@ export default function ChangePasswordPage() {
         
         {/* Back navigation button */}
         <Link
-          href={user.role === "admin" ? "/admin/dashboard" : user.role === "salesperson" ? "/sales/dashboard" : "/shop"}
+          href={(user.role === "admin" || user.role === "root_admin") ? "/admin/dashboard" : user.role === "salesperson" ? "/sales/dashboard" : "/shop"}
           className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-teal-650 font-semibold uppercase tracking-wider transition-colors mb-2"
         >
           <ArrowLeft className="w-3.5 h-3.5" />

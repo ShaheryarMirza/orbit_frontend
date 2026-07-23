@@ -108,7 +108,7 @@ export default function AssistedOrderPage() {
     if (isCheckingAuth) return;
     if (!isAuthenticated) {
       router.push("/login");
-    } else if (user?.role !== "admin" && user?.role !== "salesperson") {
+    } else if (user?.role !== "admin" && user?.role !== "root_admin" && user?.role !== "salesperson") {
       router.push("/");
     }
   }, [isCheckingAuth, isAuthenticated, user, router]);
@@ -141,7 +141,7 @@ export default function AssistedOrderPage() {
   };
 
   useEffect(() => {
-    if (!isCheckingAuth && isAuthenticated && (user?.role === "admin" || user?.role === "salesperson")) {
+    if (!isCheckingAuth && isAuthenticated && (user?.role === "admin" || user?.role === "root_admin" || user?.role === "salesperson")) {
       fetchData();
     }
   }, [isCheckingAuth, isAuthenticated, user]);
@@ -288,7 +288,7 @@ export default function AssistedOrderPage() {
     }
   };
 
-  if (isCheckingAuth || !isAuthenticated || (user?.role !== "admin" && user?.role !== "salesperson")) {
+  if (isCheckingAuth || !isAuthenticated || (user?.role !== "admin" && user?.role !== "root_admin" && user?.role !== "salesperson")) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-4 bg-gray-50 text-slate-800">
         <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
