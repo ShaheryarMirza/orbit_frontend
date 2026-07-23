@@ -19,7 +19,8 @@ import {
   Link2,
   FileSpreadsheet,
   UploadCloud,
-  Search
+  Search,
+  Trash2
 } from "lucide-react";
 
 interface Shop {
@@ -96,6 +97,30 @@ export default function AdminDashboard() {
   const [reviewingShop, setReviewingShop] = useState<Shop | null>(null);
   const [modalStatus, setModalStatus] = useState<"pending" | "approved" | "rejected">("pending");
   const [modalSageRef, setModalSageRef] = useState("");
+
+  // Deletion State (Root Admin Only)
+  const [deletingShop, setDeletingShop] = useState<Shop | null>(null);
+  const [isDeletingShop, setIsDeletingShop] = useState(false);
+  const [deleteShopError, setDeleteShopError] = useState<string | null>(null);
+
+  const isRootAdmin = user?.role === "root_admin" || user?.email === "admin@admin.com";
+
+  const handleDeleteShop = async () => {
+    if (!deletingShop) return;
+    setIsDeletingShop(true);
+    setDeleteShopError(null);
+    try {
+      await api.delete(`/admin/shops/${deletingShop.id}`);
+      setShops((prev) => prev.filter((s) => s.id !== deletingShop.id));
+      setPendingShops((prev) => prev.filter((s) => s.id !== deletingShop.id));
+      setDeletingShop(null);
+    } catch (err: any) {
+      console.error(err);
+      setDeleteShopError(err.response?.data?.detail || "Failed to delete shop record. Please check sync status.");
+    } finally {
+      setIsDeletingShop(false);
+    }
+  };
 
   // Dynamic search filtering
   const query = searchQuery.toLowerCase().trim();
@@ -567,12 +592,26 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="py-4.5 px-6 text-right">
-                          <button
-                            onClick={() => openReviewModal(shop)}
-                            className="inline-flex items-center gap-1 text-xs font-bold border border-gray-300 hover:border-teal-600 hover:bg-teal-50 text-slate-700 hover:text-teal-600 py-1.5 px-3 rounded-lg transition-all cursor-pointer"
-                          >
-                            Review & Edit
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => openReviewModal(shop)}
+                              className="inline-flex items-center gap-1 text-xs font-bold border border-gray-300 hover:border-teal-600 hover:bg-teal-50 text-slate-700 hover:text-teal-600 py-1.5 px-3 rounded-lg transition-all cursor-pointer"
+                            >
+                              Review & Edit
+                            </button>
+                            {isRootAdmin && (shop.sage_sync_status !== "synced" && (shop.sage_sync_status as string) !== "completed") && (
+                              <button
+                                onClick={() => {
+                                  setDeleteShopError(null);
+                                  setDeletingShop(shop);
+                                }}
+                                className="inline-flex items-center justify-center p-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-gray-200 hover:border-rose-300 rounded-lg transition-all cursor-pointer shadow-xs"
+                                title="Delete Unsynced Shop (Root Admin Only)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -622,12 +661,26 @@ export default function AdminDashboard() {
                         <td className="py-4.5 px-6 text-slate-650">{shop.email}</td>
                         <td className="py-4.5 px-6 font-mono font-bold text-slate-600">{shop.account_ref}</td>
                         <td className="py-4.5 px-6 text-right">
-                          <button
-                            onClick={() => openReviewModal(shop)}
-                            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-teal-50 border border-gray-300 hover:border-teal-600 hover:text-teal-700 py-1.5 px-3.5 rounded-lg transition-all cursor-pointer shadow-xs"
-                          >
-                            Review
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => openReviewModal(shop)}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-teal-50 border border-gray-300 hover:border-teal-600 hover:text-teal-700 py-1.5 px-3.5 rounded-lg transition-all cursor-pointer shadow-xs"
+                            >
+                              Review
+                            </button>
+                            {isRootAdmin && (shop.sage_sync_status !== "synced" && (shop.sage_sync_status as string) !== "completed") && (
+                              <button
+                                onClick={() => {
+                                  setDeleteShopError(null);
+                                  setDeletingShop(shop);
+                                }}
+                                className="inline-flex items-center justify-center p-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-gray-200 hover:border-rose-300 rounded-lg transition-all cursor-pointer shadow-xs"
+                                title="Delete Unsynced Registration (Root Admin Only)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -924,6 +977,65 @@ export default function AdminDashboard() {
                   <Check className="w-4 h-4" />
                 )}
                 Save & Resolve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shop Deletion Confirmation Modal */}
+      {deletingShop && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-5">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-2.5 bg-rose-100/80 rounded-2xl">
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">Confirm Permanent Deletion</h3>
+                <p className="text-xs text-rose-600 font-semibold mt-0.5">Root Admin Privileged Action</p>
+              </div>
+            </div>
+
+            {deleteShopError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{deleteShopError}</span>
+              </div>
+            )}
+
+            <p className="text-sm text-slate-600 font-medium leading-relaxed">
+              Are you sure you want to permanently delete this unsynced record{" "}
+              <strong className="text-slate-900 font-bold">{deletingShop.company_name}</strong> ({deletingShop.account_ref})? This action cannot be undone.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setDeletingShop(null);
+                  setDeleteShopError(null);
+                }}
+                disabled={isDeletingShop}
+                className="py-2.5 px-4 rounded-xl text-slate-700 hover:bg-gray-100 text-xs font-bold transition-all border border-gray-200 cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteShop}
+                disabled={isDeletingShop}
+                className="inline-flex items-center justify-center gap-2 py-2.5 px-5 rounded-xl text-white bg-rose-600 hover:bg-rose-700 text-xs font-bold shadow-sm transition-all border-0 cursor-pointer disabled:opacity-50"
+              >
+                {isDeletingShop ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Permanently
+                  </>
+                )}
               </button>
             </div>
           </div>
