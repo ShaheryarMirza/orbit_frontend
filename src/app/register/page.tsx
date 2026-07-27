@@ -94,9 +94,6 @@ export default function RegisterPage() {
           <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             Register your shop
           </h2>
-          <p className="mt-2 text-sm text-slate-500">
-            Create a shop owner account to connect with our B2B ordering portal
-          </p>
         </div>
 
         {error && (

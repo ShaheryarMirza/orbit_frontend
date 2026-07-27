@@ -180,17 +180,10 @@ export default function ShopCatalog() {
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Banner header */}
-        <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-8 sm:p-12 shadow-sm">
-          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2">
-              <span className="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-xs font-bold bg-teal-50 text-teal-600 border border-teal-200">
-                <Sparkles className="w-3.5 h-3.5" />
-                B2B Catalog Connected to Sage 50
-              </span>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-905 tracking-tight font-sans">Product Catalog</h1>
-              <p className="text-slate-500 text-sm max-w-xl">
-                Browse inventory, check stock levels, and place direct orders synced to your business account.
-              </p>
+        <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-5 sm:p-8 shadow-sm">
+          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-905 tracking-tight font-sans">Product Catalog</h1>
             </div>
             
             {/* Search inputs */}
@@ -203,7 +196,7 @@ export default function ShopCatalog() {
                 placeholder="Search products by name or code..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-405 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all text-sm"
+                className="w-full pl-11 pr-4 py-2.5 sm:py-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-405 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all text-sm"
               />
             </div>
           </div>
@@ -217,11 +210,43 @@ export default function ShopCatalog() {
           </div>
         )}
 
+        {/* Mobile Horizontal Categories Bar */}
+        <div className="lg:hidden bg-white border border-gray-200 rounded-2xl p-3 shadow-sm">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              onClick={() => handleSelectCategory(null, null)}
+              className={`shrink-0 py-1.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                !selectedCategorySlug
+                  ? "bg-teal-600 text-white shadow-xs"
+                  : "bg-gray-100 text-slate-700 hover:bg-gray-200"
+              }`}
+            >
+              All Products
+            </button>
+            {categories.map((cat) => {
+              const isCatSelected = selectedCategorySlug === cat.slug;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => handleSelectCategory(cat.slug, null)}
+                  className={`shrink-0 py-1.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isCatSelected
+                      ? "bg-teal-600 text-white shadow-xs"
+                      : "bg-gray-100 text-slate-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Two-Column Layout (Sidebar filter + Products Catalog Grid) */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           
-          {/* 1. Categories Sidebar (Left Column) */}
-          <div className="lg:col-span-1 space-y-6">
+          {/* 1. Categories Sidebar (Left Column - Desktop) */}
+          <div className="hidden lg:block lg:col-span-1 space-y-6">
             <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
                 <Filter className="w-4 h-4 text-teal-600" />
@@ -293,7 +318,7 @@ export default function ShopCatalog() {
           {/* 2. Product Grid (Right Column) */}
           <div className="lg:col-span-3">
             {isLoadingProducts ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <div key={n} className="bg-white border border-gray-200 rounded-2xl p-4 space-y-4 animate-pulse">
                     <div className="aspect-square w-full bg-gray-100 rounded-xl" />
@@ -313,7 +338,7 @@ export default function ShopCatalog() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
                 {filteredProducts.map((product) => {
                   const currentQty = quantities[product.id] || 1;
                   const priceNum = typeof product.price === "string" ? parseFloat(product.price) : product.price;
@@ -324,18 +349,18 @@ export default function ShopCatalog() {
                       className="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col relative"
                     >
 
-                      {/* Product Image */}
-                      <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden border-b border-gray-100 relative">
+                      {/* Product Image - Fixed aspect ratio with object-contain */}
+                      <div className="aspect-square bg-white flex items-center justify-center p-3 overflow-hidden border-b border-gray-100 relative">
                         {product.image_url ? (
                            <img
                              src={product.image_url.startsWith("http") ? product.image_url : (API_BASE_URL + product.image_url)}
                              alt={product.product_name}
-                             className="w-full h-full object-cover"
+                             className="w-full h-full object-contain max-h-full transition-transform duration-300 group-hover:scale-105"
                            />
                         ) : (
                           <div className="flex flex-col items-center justify-center text-gray-400 space-y-2">
-                            <ShoppingBag className="w-12 h-12 stroke-[1.5]" />
-                            <span className="text-xs font-bold uppercase font-mono tracking-wider bg-gray-100 px-2.5 py-1 rounded-lg border border-gray-200">
+                            <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
+                            <span className="text-[10px] font-bold uppercase font-mono tracking-wider bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
                               {product.product_code}
                             </span>
                           </div>
@@ -343,7 +368,7 @@ export default function ShopCatalog() {
                       </div>
 
                       {/* Product info */}
-                      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                      <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3 sm:space-y-4">
                         <div className="space-y-1">
                           <span className="text-xs text-slate-500 font-bold uppercase tracking-wider font-mono">
                             {product.product_code}

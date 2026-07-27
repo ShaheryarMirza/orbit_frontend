@@ -160,7 +160,6 @@ export default function ProfilePage() {
               <UserIcon className="w-8 h-8 text-teal-650" />
             </div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Account Details</h1>
-            <p className="text-slate-500 text-xs">Manage company details, contact person, and addresses</p>
           </div>
 
           {/* Success Banner */}

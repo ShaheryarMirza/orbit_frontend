@@ -304,12 +304,8 @@ export default function AssistedOrderPage() {
         {/* Header Banner */}
         <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-1.5">
-              <span className="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                <Briefcase className="w-3.5 h-3.5" />
-                Staff Sales Mode • Assisted Order Terminal
-              </span>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight font-sans">
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight font-sans">
                 Assisted Order Catalog
               </h1>
             </div>

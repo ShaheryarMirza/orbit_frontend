@@ -552,7 +552,7 @@ export default function AdminProductsPage() {
                               <img
                                 src={product.image_url.startsWith("http") ? product.image_url : (API_BASE_URL + product.image_url)}
                                 alt={product.product_name}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-contain p-0.5 bg-white"
                               />
                             ) : (
                               <ImageIcon className="w-5 h-5" />
@@ -796,7 +796,7 @@ export default function AdminProductsPage() {
                 <div className="flex items-center gap-4 p-3.5 border border-gray-200 rounded-2xl bg-slate-50 hover:bg-slate-100/50 transition-colors">
                   <div className="w-16 h-16 rounded-xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 relative group">
                     {imagePreviewUrl ? (
-                      <img src={imagePreviewUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <img src={imagePreviewUrl} alt="Preview" className="w-full h-full object-contain p-2 bg-white" />
                     ) : (
                       <ImageIcon className="w-6 h-6 text-slate-400" />
                     )}

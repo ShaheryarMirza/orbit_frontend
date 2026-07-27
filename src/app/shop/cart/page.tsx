@@ -174,7 +174,7 @@ export default function CartPage() {
                           <img
                             src={item.product.image_url.startsWith("http") ? item.product.image_url : (API_BASE_URL + item.product.image_url)}
                             alt={item.product.product_name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain p-1 bg-white"
                           />
                         ) : (
                           <span className="text-center px-1 font-semibold">{item.product.product_code}</span>

@@ -104,9 +104,6 @@ export default function LoginPage() {
           <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             Welcome back
           </h2>
-          <p className="mt-2 text-sm text-slate-500">
-            Sign in to manage your B2B Sage ordering portal
-          </p>
         </div>
 
         {error && (

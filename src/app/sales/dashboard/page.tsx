@@ -141,9 +141,6 @@ export default function SalesDashboard() {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Sales Dashboard</h1>
-              <p className="text-slate-505 text-sm mt-1">
-                Monitor system metrics, place orders on behalf of shops, and review recent activities.
-              </p>
             </div>
           </div>
           <button

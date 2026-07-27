@@ -133,7 +133,6 @@ export default function ChangePasswordPage() {
               <KeyRound className="w-8 h-8 text-teal-600" />
             </div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Security Settings</h1>
-            <p className="text-slate-500 text-xs">Update your portal account credentials</p>
           </div>
 
           {/* Forced change message banner */}

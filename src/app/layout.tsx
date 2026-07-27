@@ -3,8 +3,8 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "B2B Sage Sync Ordering App",
-  description: "Synchronized Ordering App connected with Sage 50",
+  title: "Orbit Food",
+  description: "Orbit Food B2B Wholesale Ordering Portal",
 };
 
 export default function RootLayout({
