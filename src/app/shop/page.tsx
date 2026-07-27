@@ -243,10 +243,10 @@ export default function ShopCatalog() {
         </div>
 
         {/* Two-Column Layout (Sidebar filter + Products Catalog Grid) */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* 1. Categories Sidebar (Left Column - Desktop) */}
-          <div className="hidden lg:block lg:col-span-1 space-y-6">
+          <div className="hidden lg:block lg:col-span-3 space-y-6">
             <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
                 <Filter className="w-4 h-4 text-teal-600" />
@@ -315,17 +315,17 @@ export default function ShopCatalog() {
             </div>
           </div>
 
-          {/* 2. Product Grid (Right Column) */}
-          <div className="lg:col-span-3">
+          {/* 2. Product Grid (Right Column - 9 cols, 5 cards per row on lg/xl) */}
+          <div className="lg:col-span-9">
             {isLoadingProducts ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
-                {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <div key={n} className="bg-white border border-gray-200 rounded-2xl p-4 space-y-4 animate-pulse">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                  <div key={n} className="bg-white border border-gray-200 rounded-2xl p-3 space-y-3 animate-pulse">
                     <div className="aspect-square w-full bg-gray-100 rounded-xl" />
-                    <div className="h-4 bg-gray-100 rounded w-2/3" />
-                    <div className="h-3 bg-gray-100 rounded w-1/2" />
-                    <div className="h-5 bg-gray-100 rounded w-1/3" />
-                    <div className="h-10 bg-gray-100 rounded w-full" />
+                    <div className="h-3 bg-gray-100 rounded w-2/3" />
+                    <div className="h-4 bg-gray-100 rounded w-full" />
+                    <div className="h-4 bg-gray-100 rounded w-1/2" />
+                    <div className="h-8 bg-gray-100 rounded w-full" />
                   </div>
                 ))}
               </div>
@@ -338,90 +338,89 @@ export default function ShopCatalog() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
                 {filteredProducts.map((product) => {
                   const currentQty = quantities[product.id] || 1;
                   const priceNum = typeof product.price === "string" ? parseFloat(product.price) : product.price;
+                  const vatRateVal = product.vat_rate !== undefined ? product.vat_rate : 20.0;
+                  const priceIncVat = priceNum * (1 + vatRateVal / 100);
 
                   return (
                     <div
                       key={product.id}
-                      className="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col relative"
+                      className="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                     >
-
-                      {/* Product Image - Fixed aspect ratio with object-contain */}
-                      <div className="aspect-square bg-white flex items-center justify-center p-3 overflow-hidden border-b border-gray-100 relative">
-                        {product.image_url ? (
-                           <img
-                             src={product.image_url.startsWith("http") ? product.image_url : (API_BASE_URL + product.image_url)}
-                             alt={product.product_name}
-                             className="w-full h-full object-contain max-h-full transition-transform duration-300 group-hover:scale-105"
-                           />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center text-gray-400 space-y-2">
-                            <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
-                            <span className="text-[10px] font-bold uppercase font-mono tracking-wider bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
-                              {product.product_code}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Product info */}
-                      <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3 sm:space-y-4">
-                        <div className="space-y-1">
-                          <span className="text-xs text-slate-500 font-bold uppercase tracking-wider font-mono">
-                            {product.product_code}
-                          </span>
-                          <h3 className="text-sm font-extrabold text-slate-900 leading-tight line-clamp-2">
-                            {product.product_name}
-                          </h3>
-                          {product.description && (
-                            <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-normal font-normal">
-                              {product.description}
-                            </p>
+                      <div>
+                        {/* Fixed-Aspect-Ratio Image Container with Object-Contain */}
+                        <div className="aspect-square bg-gray-50/80 flex items-center justify-center p-3 overflow-hidden border-b border-gray-100 relative">
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url.startsWith("http") ? product.image_url : (API_BASE_URL + product.image_url)}
+                              alt={product.product_name}
+                              className="w-full h-full object-contain"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-gray-400 space-y-1">
+                              <ShoppingBag className="w-8 h-8 stroke-[1.5]" />
+                              <span className="text-[9px] font-bold uppercase font-mono tracking-wider bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                                {product.product_code}
+                              </span>
+                            </div>
                           )}
                         </div>
 
-                        <div className="space-y-3.5">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xl font-extrabold text-slate-905 flex items-baseline gap-1 font-mono">
-                              £{priceNum.toFixed(2)}
-                              <span className="text-[10px] text-slate-500 font-normal normal-case">ex. VAT</span>
-                            </span>
-                            <span className="text-xs text-teal-600 font-bold font-mono">
-                              £{(priceNum * (1 + (product.vat_rate ?? 20) / 100)).toFixed(2)} <span className="text-[10px] text-teal-500 font-normal">inc. VAT ({product.vat_rate ?? 20}%)</span>
-                            </span>
-                          </div>
-                           {/* Quantity Selector & Add to Cart */}
-                            <div className="space-y-3">
-                              {/* Qty controller */}
-                              <div className="flex items-center justify-between border border-gray-200 bg-gray-50 rounded-xl p-1">
-                                <button
-                                  onClick={() => handleQuantityChange(product.id, currentQty - 1)}
-                                  className="p-1.5 hover:bg-gray-200 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                                >
-                                  <Minus className="w-4 h-4" />
-                                </button>
-                                <span className="text-sm font-bold text-slate-800 w-8 text-center font-mono">
-                                  {currentQty}
-                                </span>
-                                <button
-                                  onClick={() => handleQuantityChange(product.id, currentQty + 1)}
-                                  className="p-1.5 hover:bg-gray-200 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                                >
-                                  <Plus className="w-4 h-4" />
-                                </button>
-                              </div>
+                        {/* Product Info */}
+                        <div className="p-3 space-y-1">
+                          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider font-mono">
+                            {product.product_code}
+                          </span>
+                          <h3 className="text-xs font-extrabold text-slate-900 leading-snug line-clamp-2" title={product.product_name}>
+                            {product.product_name}
+                          </h3>
+                        </div>
+                      </div>
 
-                              <button
-                                onClick={() => handleAddToCart(product)}
-                                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white bg-teal-600 hover:bg-teal-700 text-sm font-bold shadow-sm transition-all cursor-pointer"
-                              >
-                                <ShoppingCart className="w-4 h-4" />
-                                Add to Cart
-                              </button>
-                            </div>
+                      {/* Pricing & Add to Cart Controls */}
+                      <div className="p-3 pt-0 space-y-2">
+                        <div className="flex flex-col gap-0.5 border-t border-gray-100 pt-2">
+                          <span className="text-sm font-extrabold text-slate-900 flex items-baseline gap-1 font-mono">
+                            £{priceNum.toFixed(2)}
+                            <span className="text-[9px] text-slate-500 font-normal normal-case">ex. VAT</span>
+                          </span>
+                          <span className="text-[10px] text-teal-600 font-bold font-mono">
+                            £{priceIncVat.toFixed(2)} <span className="text-[9px] text-teal-500 font-normal">inc. VAT</span>
+                          </span>
+                        </div>
+
+                        {/* Qty Selector & Add Button */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between border border-gray-200 bg-gray-50 rounded-lg p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleQuantityChange(product.id, currentQty - 1)}
+                              className="p-1 hover:bg-gray-200 rounded text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="text-xs font-bold text-slate-800 w-6 text-center font-mono">
+                              {currentQty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleQuantityChange(product.id, currentQty + 1)}
+                              className="p-1 hover:bg-gray-200 rounded text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleAddToCart(product)}
+                            className="w-full flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-white bg-teal-600 hover:bg-teal-700 text-[11px] font-bold shadow-xs transition-all cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" /> Add to Cart
+                          </button>
                         </div>
                       </div>
                     </div>
