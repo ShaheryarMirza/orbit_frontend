@@ -95,7 +95,17 @@ export default function OrderHistoryPage() {
       link.remove();
       window.URL.revokeObjectURL(downloadUrl);
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to download PDF invoice.");
+      let message = "Failed to download PDF invoice.";
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const json = JSON.parse(text);
+          if (json.detail) message = json.detail;
+        } catch (e) {}
+      } else if (err.response?.data?.detail) {
+        message = err.response.data.detail;
+      }
+      alert(message);
     }
   };
 
