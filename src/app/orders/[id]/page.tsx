@@ -4,6 +4,7 @@ import React, { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
+import { useToastStore } from "@/store/toastStore";
 import api from "@/lib/api";
 import {
   Loader2,
@@ -70,6 +71,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
   const [isActioning, setIsActioning] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
+  const showToast = useToastStore((state) => state.showToast);
   const isStaff = user?.role === "root_admin" || user?.role === "admin" || user?.role === "salesperson";
 
   const handleDownloadPdf = async () => {
@@ -88,6 +90,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
       link.click();
       link.remove();
       window.URL.revokeObjectURL(downloadUrl);
+      showToast("Sales order PDF downloaded successfully", "success");
     } catch (err: any) {
       let message = "Failed to download PDF invoice.";
       if (err.response?.data instanceof Blob) {
@@ -99,7 +102,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
       } else if (err.response?.data?.detail) {
         message = err.response.data.detail;
       }
-      alert(message);
+      showToast(message, "error");
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -150,11 +153,11 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
     setIsActioning(true);
     try {
       await api.patch(`/orders/${id}/cancel`);
-      alert("Order cancelled successfully!");
+      showToast("Order cancelled successfully!", "success");
       fetchOrderDetail();
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.detail || "Failed to cancel order.");
+      showToast(err.response?.data?.detail || "Failed to cancel order.", "error");
     } finally {
       setIsActioning(false);
     }
@@ -164,11 +167,11 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
     setIsActioning(true);
     try {
       await api.patch(`/orders/${id}/retry-sage-sync`);
-      alert("Sage sync status reset to pending successfully!");
+      showToast("Sage sync status reset to pending successfully!", "success");
       fetchOrderDetail();
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.detail || "Failed to retry Sage sync.");
+      showToast(err.response?.data?.detail || "Failed to retry Sage sync.", "error");
     } finally {
       setIsActioning(false);
     }

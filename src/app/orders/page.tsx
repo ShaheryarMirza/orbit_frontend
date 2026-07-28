@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
+import { useToastStore } from "@/store/toastStore";
 import api from "@/lib/api";
 import {
   Loader2,
@@ -77,6 +78,7 @@ export default function OrderHistoryPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const showToast = useToastStore((state) => state.showToast);
   const isRootAdmin = user?.role === "root_admin" || user?.email === "admin@admin.com";
   const isStaff = user?.role === "root_admin" || user?.role === "admin" || user?.role === "salesperson";
 
@@ -94,6 +96,7 @@ export default function OrderHistoryPage() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(downloadUrl);
+      showToast("Sales order PDF downloaded successfully", "success");
     } catch (err: any) {
       let message = "Failed to download PDF invoice.";
       if (err.response?.data instanceof Blob) {
@@ -105,7 +108,7 @@ export default function OrderHistoryPage() {
       } else if (err.response?.data?.detail) {
         message = err.response.data.detail;
       }
-      alert(message);
+      showToast(message, "error");
     }
   };
 

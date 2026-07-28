@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import ToastContainer from "@/components/ToastContainer";
 
 export const metadata: Metadata = {
   title: "Orbit Food",
@@ -17,6 +18,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-gray-50 text-slate-800">
         <Navbar />
         <main className="flex-1 flex flex-col">{children}</main>
+        <ToastContainer />
       </body>
     </html>
   );
