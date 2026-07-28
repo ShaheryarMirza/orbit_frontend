@@ -16,7 +16,8 @@ import {
   Search,
   X,
   SlidersHorizontal,
-  Trash2
+  Trash2,
+  Download
 } from "lucide-react";
 
 interface Salesperson {
@@ -77,6 +78,26 @@ export default function OrderHistoryPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const isRootAdmin = user?.role === "root_admin" || user?.email === "admin@admin.com";
+  const isStaff = user?.role === "root_admin" || user?.role === "admin" || user?.role === "salesperson";
+
+  const handleDownloadPdf = async (orderId: number, orderNumber: string | null) => {
+    try {
+      const response = await api.get(`/orders/${orderId}/pdf`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `SalesOrder_${orderNumber || orderId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to download PDF invoice.");
+    }
+  };
 
   const handleDeleteOrder = async () => {
     if (!deletingOrder) return;
@@ -454,6 +475,16 @@ export default function OrderHistoryPage() {
                               <Eye className="w-3.5 h-3.5" />
                               View Details
                             </Link>
+                            {isStaff && (
+                              <button
+                                onClick={() => handleDownloadPdf(order.id, order.order_number)}
+                                className="inline-flex items-center justify-center gap-1 text-xs font-bold border border-gray-300 hover:border-teal-500/40 bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-600 py-1.5 px-3 rounded-lg transition-all cursor-pointer shadow-xs"
+                                title="Download PDF Sales Order Invoice"
+                              >
+                                <Download className="w-3.5 h-3.5 text-teal-600" />
+                                PDF
+                              </button>
+                            )}
                             {isRootAdmin && (order.sage_sync_status !== "synced" && (order.sage_sync_status as string) !== "completed") && (
                               <button
                                 onClick={() => {

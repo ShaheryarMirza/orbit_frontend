@@ -15,7 +15,8 @@ import {
   MapPin,
   ShoppingBag,
   Briefcase,
-  FileText
+  FileText,
+  Download
 } from "lucide-react";
 
 interface OrderDetail {
@@ -67,6 +68,32 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isActioning, setIsActioning] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const isStaff = user?.role === "root_admin" || user?.role === "admin" || user?.role === "salesperson";
+
+  const handleDownloadPdf = async () => {
+    if (!orderDetail) return;
+    setIsDownloadingPdf(true);
+    try {
+      const response = await api.get(`/orders/${id}/pdf`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `SalesOrder_${orderDetail.order.order_number || id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to download PDF invoice.");
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   // 1. Auth Guard
   useEffect(() => {
@@ -262,6 +289,23 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                 <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
                   Sage Sync: Failed
                 </span>
+              )}
+
+              {/* Staff-Only Download PDF Button */}
+              {isStaff && (
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={isDownloadingPdf}
+                  className="inline-flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold py-2 px-3.5 rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                  title="Download Official Sales Order Invoice PDF"
+                >
+                  {isDownloadingPdf ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  <span>Download PDF</span>
+                </button>
               )}
             </div>
           </div>
