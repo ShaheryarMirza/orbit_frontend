@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import api, { API_BASE_URL } from "@/lib/api";
+import CustomerCombobox from "@/components/CustomerCombobox";
 import {
   Loader2,
   Plus,
@@ -567,19 +568,12 @@ export default function AssistedOrderPage() {
                   <Building2 className="w-3.5 h-3.5 text-teal-600" />
                   Select Customer Account <span className="text-red-500">*</span>
                 </label>
-                <select
-                  required
-                  value={selectedShopId}
-                  onChange={(e) => setSelectedShopId(e.target.value ? Number(e.target.value) : "")}
-                  className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-xs font-medium font-sans"
-                >
-                  <option value="">-- Choose Approved Customer Shop --</option>
-                  {shops.map((shop) => (
-                    <option key={shop.id} value={shop.id}>
-                      {shop.company_name} ({shop.account_ref || `ID: ${shop.id}`}) - {shop.city}
-                    </option>
-                  ))}
-                </select>
+                <CustomerCombobox
+                  shops={shops}
+                  selectedShopId={selectedShopId}
+                  onSelectShop={(id) => setSelectedShopId(id)}
+                  error={error && !selectedShopId ? error : null}
+                />
               </div>
 
               {/* Customer PO Reference */}

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore, Product } from "@/store/cartStore";
+import { useToastStore } from "@/store/toastStore";
 import api, { API_BASE_URL } from "@/lib/api";
 import {
   Loader2,
@@ -145,12 +146,14 @@ export default function ShopCatalog() {
     }));
   };
 
+  const { showToast } = useToastStore();
+
   // 6. Handle Add to Zustand Cart
   const handleAddToCart = (product: Product) => {
     const qtyToAdd = quantities[product.id] || 1;
     
     addItem(product, qtyToAdd);
-    alert(`${qtyToAdd} x ${product.product_name} added to cart!`);
+    showToast(`${qtyToAdd} x ${product.product_name} added to cart!`, "success");
     
     // Reset selection quantity back to 1
     setQuantities((prev) => ({

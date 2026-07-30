@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
+import { useToastStore } from "@/store/toastStore";
 import api, { API_BASE_URL } from "@/lib/api";
 import {
   Loader2,
@@ -45,6 +46,8 @@ export default function CartPage() {
   }, [isCheckingAuth, isAuthenticated, user, router]);
 
   // 2. Place Order Operation
+  const { showToast } = useToastStore();
+
   const handlePlaceOrder = async () => {
     if (items.length === 0) return;
 
@@ -65,10 +68,10 @@ export default function CartPage() {
     try {
       await api.post("/orders", payload);
       
-      // Clear Cart state, alert, and redirect
+      // Clear Cart state, toast, and redirect
       clearCart();
-      alert("Order placed successfully!");
-      router.push("/shop");
+      showToast("Order placed successfully!", "success");
+      router.push("/orders");
     } catch (err: any) {
       console.error(err);
       if (err.response?.data?.detail) {
