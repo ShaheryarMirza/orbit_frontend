@@ -489,9 +489,21 @@ export default function AssistedOrderPage() {
                             >
                               <Minus className="w-3 h-3" />
                             </button>
-                            <span className="text-xs font-bold text-slate-800 w-6 text-center font-mono">
-                              {currentQty}
-                            </span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={currentQty}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                handleQuantityChange(product.id, isNaN(val) ? 1 : val);
+                              }}
+                              onBlur={() => {
+                                if (!currentQty || currentQty < 1) {
+                                  handleQuantityChange(product.id, 1);
+                                }
+                              }}
+                              className="w-12 text-center text-xs font-bold text-slate-800 font-mono bg-transparent border-none focus:outline-none focus:bg-white focus:ring-1 focus:ring-teal-500 rounded py-0.5 px-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
                             <button
                               type="button"
                               onClick={() => handleQuantityChange(product.id, currentQty + 1)}
@@ -632,7 +644,21 @@ export default function AssistedOrderPage() {
                               >
                                 <Minus className="w-3 h-3" />
                               </button>
-                              <span className="w-5 text-center font-bold font-mono text-xs">{item.quantity}</span>
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value, 10);
+                                  handleUpdateCartQty(item.product.id, isNaN(val) ? 1 : val);
+                                }}
+                                onBlur={() => {
+                                  if (!item.quantity || item.quantity < 1) {
+                                    handleUpdateCartQty(item.product.id, 1);
+                                  }
+                                }}
+                                className="w-10 text-center text-xs font-bold text-slate-800 font-mono bg-transparent border-none focus:outline-none focus:bg-white focus:ring-1 focus:ring-teal-500 rounded py-0.5 px-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
                               <button
                                 type="button"
                                 onClick={() => handleUpdateCartQty(item.product.id, item.quantity + 1)}

@@ -206,9 +206,22 @@ export default function CartPage() {
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="text-xs font-bold text-slate-800 w-8 text-center font-mono">
-                          {item.quantity}
-                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          disabled={isPlacingOrder}
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            updateQuantity(item.product.id, isNaN(val) ? 1 : val);
+                          }}
+                          onBlur={() => {
+                            if (!item.quantity || item.quantity < 1) {
+                              updateQuantity(item.product.id, 1);
+                            }
+                          }}
+                          className="w-12 text-center text-xs font-bold text-slate-800 font-mono bg-transparent border-none focus:outline-none focus:bg-white focus:ring-1 focus:ring-teal-500 rounded py-0.5 px-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
                         <button
                           disabled={isPlacingOrder || item.quantity >= item.product.quantity}
                           onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
