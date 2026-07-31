@@ -459,6 +459,11 @@ export default function AssistedOrderPage() {
                           <h3 className="text-xs font-extrabold text-slate-900 leading-snug line-clamp-2" title={product.product_name}>
                             {product.product_name}
                           </h3>
+                          {product.description && (
+                            <p className="text-[11px] font-medium text-slate-500 line-clamp-2 leading-tight" title={product.description}>
+                              {product.description}
+                            </p>
+                          )}
                         </div>
                       </div>
 
