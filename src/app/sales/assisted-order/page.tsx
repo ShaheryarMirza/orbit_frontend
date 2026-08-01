@@ -68,6 +68,7 @@ interface Product {
 interface AssistedCartItem {
   product: Product;
   quantity: number;
+  customPrice?: number | string;
 }
 
 export default function AssistedOrderPage() {
@@ -188,9 +189,25 @@ export default function AssistedOrderPage() {
     setCartItems((prev) => prev.filter((item) => item.product.id !== productId));
   };
 
+  const handleUpdateCartPrice = (productId: number, newPrice: string | number) => {
+    setCartItems((prev) =>
+      prev.map((item) =>
+        item.product.id === productId ? { ...item, customPrice: newPrice } : item
+      )
+    );
+  };
+
+  const getEffectiveUnitPrice = (item: AssistedCartItem): number => {
+    if (item.customPrice !== undefined && item.customPrice !== "" && item.customPrice !== null) {
+      const p = typeof item.customPrice === "number" ? item.customPrice : parseFloat(item.customPrice);
+      return isNaN(p) ? 0 : p;
+    }
+    return typeof item.product.price === "string" ? parseFloat(item.product.price) : item.product.price;
+  };
+
   // 4. Calculations
   const subtotal = cartItems.reduce((acc, item) => {
-    const priceNum = typeof item.product.price === "string" ? parseFloat(item.product.price) : item.product.price;
+    const priceNum = getEffectiveUnitPrice(item);
     return acc + priceNum * item.quantity;
   }, 0);
 
@@ -206,7 +223,7 @@ export default function AssistedOrderPage() {
 
   // Dynamic VAT calculation using each product's specific vat_rate
   const totalVat = cartItems.reduce((acc, item) => {
-    const priceNum = typeof item.product.price === "string" ? parseFloat(item.product.price) : item.product.price;
+    const priceNum = getEffectiveUnitPrice(item);
     const vatRateVal = item.product.vat_rate !== undefined ? item.product.vat_rate : 20.0;
     const lineGross = priceNum * item.quantity;
     const ratio = subtotal > 0 ? (subtotal - calculatedDiscountAmount) / subtotal : 1;
@@ -254,10 +271,14 @@ export default function AssistedOrderPage() {
 
     const payload = {
       shop_id: Number(selectedShopId),
-      items: cartItems.map((item) => ({
-        product_id: item.product.id,
-        quantity: item.quantity
-      })),
+      items: cartItems.map((item) => {
+        const customP = item.customPrice !== undefined && item.customPrice !== "" ? parseFloat(String(item.customPrice)) : undefined;
+        return {
+          product_id: item.product.id,
+          quantity: item.quantity,
+          unit_price: customP !== undefined && !isNaN(customP) ? customP : undefined,
+        };
+      }),
       discount_type: discountType || null,
       discount_value: discountValue ? parseFloat(discountValue) : null,
       customer_reference: customerReference.trim() || null,
@@ -623,16 +644,29 @@ export default function AssistedOrderPage() {
                 ) : (
                   <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                     {cartItems.map((item) => {
-                      const pNum = typeof item.product.price === "string" ? parseFloat(item.product.price) : item.product.price;
+                      const pNum = getEffectiveUnitPrice(item);
                       const lineExVat = pNum * item.quantity;
+                      const currentPriceInput = item.customPrice !== undefined ? item.customPrice : (typeof item.product.price === "string" ? parseFloat(item.product.price) : item.product.price);
 
                       return (
                         <div key={item.product.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs gap-3">
-                          <div className="flex-1 space-y-0.5">
+                          <div className="flex-1 space-y-1">
                             <p className="font-bold text-slate-900 line-clamp-1">{item.product.product_name}</p>
-                            <p className="text-[10px] text-slate-500 font-mono">
-                              {item.product.product_code} • £{pNum.toFixed(2)} ex. VAT
-                            </p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] text-slate-500 font-mono">{item.product.product_code} •</span>
+                              <div className="flex items-center gap-0.5 bg-white border border-gray-300 rounded px-1.5 py-0.5" title="Override unit price for this customer">
+                                <span className="text-[10px] text-slate-400 font-mono">£</span>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={currentPriceInput}
+                                  onChange={(e) => handleUpdateCartPrice(item.product.id, e.target.value)}
+                                  className="w-14 text-xs font-bold font-mono text-slate-900 focus:outline-none bg-transparent"
+                                />
+                                <span className="text-[9px] text-slate-400">ex. VAT</span>
+                              </div>
+                            </div>
                           </div>
                           
                           <div className="flex items-center gap-2">

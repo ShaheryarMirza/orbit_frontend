@@ -17,7 +17,10 @@ import {
   ShoppingBag,
   Briefcase,
   FileText,
-  Download
+  Download,
+  Pencil,
+  Check,
+  X
 } from "lucide-react";
 
 interface OrderDetail {
@@ -49,6 +52,7 @@ interface OrderDetail {
     city: string;
   };
   items: Array<{
+    product_id: number;
     product_code: string;
     product_name: string;
     unit_price: string | number;
@@ -177,6 +181,46 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
     }
   };
 
+  const [isEditingPrices, setIsEditingPrices] = useState(false);
+  const [editedPrices, setEditedPrices] = useState<{ [productId: number]: string | number }>({});
+  const [isSavingPrices, setIsSavingPrices] = useState(false);
+
+  const handleToggleEditPrices = () => {
+    if (!isEditingPrices && orderDetail) {
+      const initialMap: { [productId: number]: string | number } = {};
+      orderDetail.items.forEach((item) => {
+        initialMap[item.product_id] = typeof item.unit_price === "string" ? parseFloat(item.unit_price) : item.unit_price;
+      });
+      setEditedPrices(initialMap);
+    }
+    setIsEditingPrices((prev) => !prev);
+  };
+
+  const handleSavePrices = async () => {
+    if (!orderDetail) return;
+    setIsSavingPrices(true);
+    try {
+      const payload = {
+        items: orderDetail.items.map((item) => {
+          const val = editedPrices[item.product_id];
+          const unitP = val !== undefined && val !== "" ? parseFloat(String(val)) : (typeof item.unit_price === "string" ? parseFloat(item.unit_price) : item.unit_price);
+          return {
+            product_id: item.product_id,
+            unit_price: isNaN(unitP) ? 0 : unitP,
+          };
+        }),
+      };
+      const res = await api.patch(`/orders/${id}/prices`, payload);
+      setOrderDetail(res.data);
+      setIsEditingPrices(false);
+      showToast("Order prices updated successfully!", "success");
+    } catch (err: any) {
+      showToast(err.response?.data?.detail || "Failed to update order prices.", "error");
+    } finally {
+      setIsSavingPrices(false);
+    }
+  };
+
   if (isCheckingAuth || !isAuthenticated) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-4 bg-gray-50 text-slate-800">
@@ -225,10 +269,46 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
     minute: "2-digit"
   });
 
-  const subtotalVal = typeof order.subtotal === "string" ? parseFloat(order.subtotal) : order.subtotal;
-  const discountAmountVal = typeof order.discount_amount === "string" ? parseFloat(order.discount_amount) : order.discount_amount;
-  const finalTotalVal = typeof order.final_total === "string" ? parseFloat(order.final_total) : order.final_total;
-  const totalVatVal = typeof order.total_vat === "string" ? parseFloat(order.total_vat) : (order.total_vat || 0);
+  const calculatedItems = items.map((item) => {
+    const priceVal = isEditingPrices && editedPrices[item.product_id] !== undefined
+      ? (parseFloat(String(editedPrices[item.product_id])) || 0)
+      : (typeof item.unit_price === "string" ? parseFloat(item.unit_price) : item.unit_price);
+    const lineTotalVal = priceVal * item.quantity;
+    return {
+      ...item,
+      computedUnitPrice: priceVal,
+      computedLineTotal: lineTotalVal,
+    };
+  });
+
+  const subtotalVal = isEditingPrices
+    ? calculatedItems.reduce((acc, item) => acc + item.computedLineTotal, 0)
+    : (typeof order.subtotal === "string" ? parseFloat(order.subtotal) : order.subtotal);
+
+  let discountAmountVal = 0;
+  if (isEditingPrices) {
+    if (order.discount_type === "fixed") {
+      discountAmountVal = Math.min(subtotalVal, typeof order.discount_value === "number" ? order.discount_value : (parseFloat(String(order.discount_value)) || 0));
+    } else if (order.discount_type === "percentage") {
+      const pct = typeof order.discount_value === "number" ? order.discount_value : (parseFloat(String(order.discount_value)) || 0);
+      discountAmountVal = subtotalVal * (pct / 100);
+    }
+  } else {
+    discountAmountVal = typeof order.discount_amount === "string" ? parseFloat(order.discount_amount) : order.discount_amount;
+  }
+
+  const netSubtotalVal = Math.max(0, subtotalVal - discountAmountVal);
+
+  const totalVatVal = isEditingPrices
+    ? calculatedItems.reduce((acc, item) => {
+        const vatRateVal = item.vat_rate !== undefined ? item.vat_rate : 20.0;
+        const ratio = subtotalVal > 0 ? netSubtotalVal / subtotalVal : 1;
+        const lineNet = item.computedLineTotal * ratio;
+        return acc + lineNet * (vatRateVal / 100);
+      }, 0)
+    : (typeof order.total_vat === "string" ? parseFloat(order.total_vat) : (order.total_vat || 0));
+
+  const finalTotalVal = netSubtotalVal;
   const totalPriceVal = finalTotalVal + totalVatVal;
 
   return (
@@ -418,11 +498,45 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
 
         {/* Line Items Table */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-5 border-b border-gray-100 bg-gray-50/50">
+          <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
             <h3 className="text-lg font-bold text-slate-950 flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-teal-600" />
               Order Items
             </h3>
+
+            {isStaff && order.status === "placed" && order.sage_sync_status !== "synced" && (
+              <div>
+                {!isEditingPrices ? (
+                  <button
+                    type="button"
+                    onClick={handleToggleEditPrices}
+                    className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 transition-all cursor-pointer shadow-xs"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Edit Prices
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSavePrices}
+                      disabled={isSavingPrices}
+                      className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      {isSavingPrices ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      Save Changes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleEditPrices}
+                      disabled={isSavingPrices}
+                      className="inline-flex items-center gap-1 py-1.5 px-2.5 rounded-lg text-xs font-bold text-slate-600 bg-white border border-gray-300 hover:bg-gray-50 transition-all cursor-pointer shadow-xs"
+                    >
+                      <X className="w-3.5 h-3.5" /> Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           <div className="overflow-x-auto">
@@ -438,18 +552,31 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
-                {items.map((item, index) => {
-                  const price = typeof item.unit_price === "string" ? parseFloat(item.unit_price) : item.unit_price;
-                  const total = typeof item.line_total === "string" ? parseFloat(item.line_total) : item.line_total;
-
+                {calculatedItems.map((item, index) => {
                   return (
                     <tr key={index} className="hover:bg-gray-50/50 transition-colors">
                       <td className="py-4 px-6 font-mono text-slate-500 text-xs">{item.product_code}</td>
                       <td className="py-4 px-6 font-bold text-slate-900">{item.product_name}</td>
-                      <td className="py-4 px-6 text-right font-mono text-slate-700">£{price.toFixed(2)}</td>
+                      <td className="py-4 px-6 text-right font-mono text-slate-700">
+                        {isEditingPrices ? (
+                          <div className="inline-flex items-center gap-1 bg-white border border-teal-500 rounded-md px-2 py-1 shadow-xs">
+                            <span className="text-xs text-slate-400 font-mono">£</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={editedPrices[item.product_id] !== undefined ? editedPrices[item.product_id] : item.computedUnitPrice}
+                              onChange={(e) => setEditedPrices((prev) => ({ ...prev, [item.product_id]: e.target.value }))}
+                              className="w-20 text-right font-mono text-xs font-bold text-slate-900 focus:outline-none bg-transparent"
+                            />
+                          </div>
+                        ) : (
+                          `£${item.computedUnitPrice.toFixed(2)}`
+                        )}
+                      </td>
                       <td className="py-4 px-6 text-center font-bold text-slate-700">{item.quantity}</td>
                       <td className="py-4 px-6 text-center font-mono text-slate-700">{item.vat_rate !== undefined ? `${item.vat_rate}%` : "20%"}</td>
-                      <td className="py-4 px-6 text-right font-mono font-bold text-slate-950">£{total.toFixed(2)}</td>
+                      <td className="py-4 px-6 text-right font-mono font-bold text-slate-950">£{item.computedLineTotal.toFixed(2)}</td>
                     </tr>
                   );
                 })}
