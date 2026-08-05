@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore, Product } from "@/store/cartStore";
 import { useToastStore } from "@/store/toastStore";
-import api, { API_BASE_URL } from "@/lib/api";
+import api from "@/lib/api";
+import ProductImage from "@/components/ProductImage";
 import {
   Loader2,
   Search,
   ShoppingCart,
   Plus,
   Minus,
-  Sparkles,
   ShoppingBag,
   Info,
   Layers,
@@ -78,7 +78,7 @@ export default function ShopCatalog() {
       const res = await api.get("/products", { params });
       const itemsList = res.data.items || [];
       setProducts(itemsList);
-      
+
       // Initialize quantities dictionary to 1 for all products
       const initialQtys: { [key: number]: number } = {};
       itemsList.forEach((prod: Product) => {
@@ -151,10 +151,10 @@ export default function ShopCatalog() {
   // 6. Handle Add to Zustand Cart
   const handleAddToCart = (product: Product) => {
     const qtyToAdd = quantities[product.id] || 1;
-    
+
     addItem(product, qtyToAdd);
     showToast(`${qtyToAdd} x ${product.product_name} added to cart!`, "success");
-    
+
     // Reset selection quantity back to 1
     setQuantities((prev) => ({
       ...prev,
@@ -181,14 +181,14 @@ export default function ShopCatalog() {
   return (
     <div className="flex-1 bg-gray-50 text-slate-800 min-h-screen py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        
+
         {/* Banner header */}
         <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-5 sm:p-8 shadow-sm">
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-905 tracking-tight font-sans">Product Catalog</h1>
             </div>
-            
+
             {/* Search inputs */}
             <div className="relative w-full md:max-w-md">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -247,7 +247,7 @@ export default function ShopCatalog() {
 
         {/* Two-Column Layout (Sidebar filter + Products Catalog Grid) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
+
           {/* 1. Categories Sidebar (Left Column - Desktop) */}
           <div className="hidden lg:block lg:col-span-3 space-y-6">
             <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
@@ -255,7 +255,7 @@ export default function ShopCatalog() {
                 <Filter className="w-4 h-4 text-teal-600" />
                 Filter by Category
               </h3>
-              
+
               <div className="space-y-1.5">
                 {/* Clear Filter Button */}
                 <button
@@ -290,7 +290,7 @@ export default function ShopCatalog() {
                         )}
                       </button>
 
-                      {/* Subcategories (Indented & expanded if parent is selected) */}
+                      {/* Subcategories */}
                       {isCatSelected && cat.subcategories.length > 0 && (
                         <div className="pl-4 py-1 space-y-1 border-l border-gray-200 ml-3">
                           {cat.subcategories.map((sub) => {
@@ -357,28 +357,20 @@ export default function ShopCatalog() {
                       className="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                     >
                       <div>
-                        {/* Fixed-Aspect-Ratio Image Container with Object-Contain */}
+                        {/* Image Container with Red Added Badge */}
                         <div className="aspect-square bg-gray-50/80 flex items-center justify-center p-3 overflow-hidden border-b border-gray-100 relative">
                           {addedQty > 0 && (
-                            <span className="absolute top-2 right-2 bg-teal-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 z-10 font-sans tracking-tight">
+                            <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 z-10 font-sans tracking-tight">
                               <ShoppingCart className="w-3 h-3" />
                               {addedQty} added
                             </span>
                           )}
-                          {product.image_url ? (
-                            <img
-                              src={product.image_url.startsWith("http") ? product.image_url : (API_BASE_URL + product.image_url)}
-                              alt={product.product_name}
-                              className="w-full h-full object-contain"
-                            />
-                          ) : (
-                            <div className="flex flex-col items-center justify-center text-gray-400 space-y-1">
-                              <ShoppingBag className="w-8 h-8 stroke-[1.5]" />
-                              <span className="text-[9px] font-bold uppercase font-mono tracking-wider bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
-                                {product.product_code}
-                              </span>
-                            </div>
-                          )}
+                          <ProductImage
+                            src={product.image_url}
+                            alt={product.product_name}
+                            code={product.product_code}
+                            className="w-full h-full object-contain"
+                          />
                         </div>
 
                         {/* Product Info */}
@@ -443,9 +435,10 @@ export default function ShopCatalog() {
                             </button>
                           </div>
 
+                          {/* Red Indicator Below Quantity Selector */}
                           {addedQty > 0 && (
-                            <div className="text-[10px] font-extrabold text-teal-700 bg-teal-50 border border-teal-200 rounded-lg py-1 px-2 text-center flex items-center justify-center gap-1 font-sans">
-                              <ShoppingBag className="w-3 h-3 text-teal-600" />
+                            <div className="text-[10px] font-extrabold text-red-700 bg-red-100 border border-red-200 rounded-lg py-1 px-2 text-center flex items-center justify-center gap-1 font-sans">
+                              <ShoppingBag className="w-3 h-3 text-red-600" />
                               <span>{addedQty} added</span>
                             </div>
                           )}

@@ -3,14 +3,14 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
-import api, { API_BASE_URL } from "@/lib/api";
+import api from "@/lib/api";
 import CustomerCombobox from "@/components/CustomerCombobox";
+import ProductImage from "@/components/ProductImage";
 import {
   Loader2,
   Plus,
   Minus,
   Trash2,
-  Briefcase,
   AlertCircle,
   CheckCircle2,
   Building2,
@@ -20,8 +20,6 @@ import {
   Filter,
   ShoppingCart,
   ShoppingBag,
-  Sparkles,
-  CreditCard,
   Tag,
   Percent,
   PoundSterling,
@@ -236,14 +234,12 @@ export default function AssistedOrderPage() {
 
   // Filter products by Category & Search
   const filteredProducts = products.filter((prod) => {
-    // 1. Category Filter
     if (selectedCategorySlug) {
       const selectedCategory = categories.find((c) => c.slug === selectedCategorySlug);
       if (selectedCategory && prod.category_id !== selectedCategory.id) {
         return false;
       }
     }
-    // 2. Search Query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const matchName = prod.product_name.toLowerCase().includes(q);
@@ -381,10 +377,10 @@ export default function AssistedOrderPage() {
           </div>
         )}
 
-        {/* Layout (Sidebar Category Filter + 5-Column Catalog Grid) */}
+        {/* Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* 1. Sidebar Categories (3 Columns) */}
+          {/* Sidebar Categories */}
           <div className="lg:col-span-3 space-y-6">
             <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-3">
@@ -425,7 +421,7 @@ export default function AssistedOrderPage() {
             </div>
           </div>
 
-          {/* 2. Catalog Products Grid (9 Columns - 5 Cards per Row) */}
+          {/* Catalog Products Grid */}
           <div className="lg:col-span-9 space-y-6">
             {isLoadingData ? (
               <div className="flex flex-col items-center justify-center py-24 gap-4 bg-white border border-gray-200 rounded-3xl">
@@ -457,28 +453,20 @@ export default function AssistedOrderPage() {
                       className="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                     >
                       <div>
-                        {/* Fixed-Aspect-Ratio Image Container with Object-Contain */}
+                        {/* Fixed-Aspect-Ratio Image Container with Red Added Badge */}
                         <div className="aspect-square bg-gray-50/80 flex items-center justify-center p-3 overflow-hidden border-b border-gray-100 relative">
                           {addedQty > 0 && (
-                            <span className="absolute top-2 right-2 bg-teal-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 z-10 font-sans tracking-tight">
+                            <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 z-10 font-sans tracking-tight">
                               <ShoppingCart className="w-3 h-3" />
                               {addedQty} added
                             </span>
                           )}
-                          {product.image_url ? (
-                            <img
-                              src={product.image_url.startsWith("http") ? product.image_url : (API_BASE_URL + product.image_url)}
-                              alt={product.product_name}
-                              className="w-full h-full object-contain"
-                            />
-                          ) : (
-                            <div className="flex flex-col items-center justify-center text-gray-400 space-y-1">
-                              <ShoppingBag className="w-8 h-8 stroke-[1.5]" />
-                              <span className="text-[9px] font-bold uppercase font-mono tracking-wider bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
-                                {product.product_code}
-                              </span>
-                            </div>
-                          )}
+                          <ProductImage
+                            src={product.image_url}
+                            alt={product.product_name}
+                            code={product.product_code}
+                            className="w-full h-full object-contain"
+                          />
                         </div>
 
                         {/* Product Info */}
@@ -543,9 +531,10 @@ export default function AssistedOrderPage() {
                             </button>
                           </div>
 
+                          {/* Red Indicator Below Quantity Selector */}
                           {addedQty > 0 && (
-                            <div className="text-[10px] font-extrabold text-teal-700 bg-teal-50 border border-teal-200 rounded-lg py-1 px-2 text-center flex items-center justify-center gap-1 font-sans">
-                              <ShoppingBag className="w-3 h-3 text-teal-600" />
+                            <div className="text-[10px] font-extrabold text-red-700 bg-red-100 border border-red-200 rounded-lg py-1 px-2 text-center flex items-center justify-center gap-1 font-sans">
+                              <ShoppingBag className="w-3 h-3 text-red-600" />
                               <span>{addedQty} added</span>
                             </div>
                           )}
@@ -798,66 +787,63 @@ export default function AssistedOrderPage() {
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Internal Order Notes</label>
                 <textarea
                   rows={2}
-                  placeholder="Notes for dispatch or accounting..."
+                  placeholder="Notes for warehouse or fulfillment staff..."
                   value={internalNotes}
                   onChange={(e) => setInternalNotes(e.target.value)}
-                  className="w-full py-2 px-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-xs font-sans"
+                  className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 placeholder-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-xs font-sans"
                 />
               </div>
 
-              {/* Financial Calculations Footer */}
-              <div className="space-y-2 pt-3 border-t border-gray-200 text-xs">
+              {/* Totals Summary Breakdown */}
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-2 text-xs font-mono">
                 <div className="flex justify-between text-slate-600">
-                  <span>Gross Subtotal (ex. VAT)</span>
-                  <span className="font-mono font-bold text-slate-900">£{subtotal.toFixed(2)}</span>
+                  <span>Items Subtotal (ex. VAT)</span>
+                  <span>£{subtotal.toFixed(2)}</span>
                 </div>
-
                 {calculatedDiscountAmount > 0 && (
-                  <div className="flex justify-between text-rose-600 font-semibold">
-                    <span>Discount ({discountType === "percentage" ? `${parseFloat(discountValue)}%` : "Fixed"})</span>
-                    <span className="font-mono">-£{calculatedDiscountAmount.toFixed(2)}</span>
+                  <div className="flex justify-between text-rose-600 font-bold">
+                    <span>Discount Applied</span>
+                    <span>-£{calculatedDiscountAmount.toFixed(2)}</span>
                   </div>
                 )}
-
                 <div className="flex justify-between text-slate-600">
-                  <span>Net Subtotal</span>
-                  <span className="font-mono font-bold text-slate-900">£{netSubtotal.toFixed(2)}</span>
+                  <span>Net Total (ex. VAT)</span>
+                  <span>£{netSubtotal.toFixed(2)}</span>
                 </div>
-
-                <div className="flex justify-between text-slate-600">
-                  <span>Estimated Total VAT</span>
-                  <span className="font-mono font-bold text-slate-900">£{totalVat.toFixed(2)}</span>
+                <div className="flex justify-between text-teal-600 font-bold">
+                  <span>Total VAT (calculated per product)</span>
+                  <span>+£{totalVat.toFixed(2)}</span>
                 </div>
-
-                <div className="flex justify-between text-base font-extrabold text-slate-950 border-t border-gray-200 pt-3">
-                  <span>Final Total (inc. VAT)</span>
-                  <span className="font-mono text-teal-600">£{finalTotal.toFixed(2)}</span>
+                <div className="border-t border-gray-200 pt-2 flex justify-between text-sm font-extrabold text-slate-950 font-sans">
+                  <span>Total Payable</span>
+                  <span className="font-mono text-teal-700">£{finalTotal.toFixed(2)}</span>
                 </div>
               </div>
 
-              {/* Submit CTA */}
+              {/* Submit Action Button */}
               <button
                 type="submit"
                 disabled={isSubmitting || cartItems.length === 0 || !selectedShopId}
-                className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl text-white bg-teal-600 hover:bg-teal-700 text-sm font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3.5 px-4 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer font-sans"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Creating Order...
+                    <span>Submitting Assisted Order...</span>
                   </>
                 ) : (
                   <>
-                    <CreditCard className="w-4 h-4" />
-                    Place Assisted Order
+                    <ShoppingCart className="w-4 h-4" />
+                    <span>Confirm & Submit Order</span>
                   </>
                 )}
               </button>
-            </form>
 
+            </form>
           </div>
         </div>
       )}
+
     </div>
   );
 }

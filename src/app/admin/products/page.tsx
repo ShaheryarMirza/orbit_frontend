@@ -4,7 +4,8 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
-import api, { API_BASE_URL } from "@/lib/api";
+import api from "@/lib/api";
+import ProductImage from "@/components/ProductImage";
 import {
   Loader2,
   Plus,
@@ -15,7 +16,6 @@ import {
   CheckCircle2,
   ArrowLeft,
   X,
-  Check,
   Upload,
   Image as ImageIcon,
   Search
@@ -168,10 +168,7 @@ export default function AdminProductsPage() {
     setSelectedSubId(product.subcategory_id || "");
     setIsActive(product.is_active);
     setImageFile(null);
-    const imageUrl = product.image_url 
-      ? (product.image_url.startsWith("http") ? product.image_url : `${API_BASE_URL}${product.image_url}`)
-      : "";
-    setImagePreviewUrl(imageUrl);
+    setImagePreviewUrl(product.image_url || "");
     setIsFormOpen(true);
   };
 
@@ -255,7 +252,7 @@ export default function AdminProductsPage() {
     }
   };
 
-  // 6. Image Upload Handler
+  // 6. Image Upload Handler (Uploads actual image file to server/storage)
   const handleImageUpload = async (productId: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -273,7 +270,7 @@ export default function AdminProductsPage() {
           "Content-Type": "multipart/form-data"
         }
       });
-      showSuccess("Product image updated successfully!");
+      showSuccess("Product image uploaded successfully!");
       loadData();
     } catch (err: any) {
       console.error(err);
@@ -311,7 +308,7 @@ export default function AdminProductsPage() {
       });
 
       showSuccess(`Spreadsheet import complete! Processed ${res.data.created} products successfully.`);
-      loadData(); // Refresh product list
+      loadData();
     } catch (err: any) {
       console.error(err);
       if (err.response?.data?.detail) {
@@ -321,7 +318,7 @@ export default function AdminProductsPage() {
       }
     } finally {
       setIsImporting(false);
-      e.target.value = ""; // Reset
+      e.target.value = "";
     }
   };
 
@@ -356,7 +353,7 @@ export default function AdminProductsPage() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-4 bg-gray-50 text-slate-800">
         <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
-        <p className="text-slate-500 text-sm">Verifying administrator credentials...</p>
+        <p className="text-slate-500 text-sm font-semibold">Verifying administrator credentials...</p>
       </div>
     );
   }
@@ -465,7 +462,7 @@ export default function AdminProductsPage() {
           </div>
         )}
 
-        {/* Sleek Search Bar */}
+        {/* Search Bar */}
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <Search className="h-4.5 w-4.5 text-slate-400" />
@@ -532,7 +529,6 @@ export default function AdminProductsPage() {
                     const priceIncVat = priceNum * (1 + vatRateVal / 100);
                     const catLabel = categories.find((c) => c.id === product.category_id)?.name || "—";
                     
-                    // Flattened find for subcategory
                     let subLabel = "—";
                     for (const cat of categories) {
                       const sub = cat.subcategories.find((s) => s.id === product.subcategory_id);
@@ -545,19 +541,19 @@ export default function AdminProductsPage() {
                     return (
                       <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
                         
-                        {/* Image & Image Upload trigger */}
+                        {/* Image with Robust Fallback Component & Upload Trigger */}
                         <td className="py-4 px-6">
                           <div className="relative group/img w-12 h-12 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden flex items-center justify-center text-slate-400">
-                            {product.image_url ? (
-                              <img
-                                src={product.image_url.startsWith("http") ? product.image_url : (API_BASE_URL + product.image_url)}
-                                alt={product.product_name}
-                                className="w-full h-full object-contain p-0.5 bg-white"
-                              />
-                            ) : (
-                              <ImageIcon className="w-5 h-5" />
-                            )}
-                            <label className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/img:opacity-100 flex items-center justify-center text-white cursor-pointer transition-opacity">
+                            <ProductImage
+                              src={product.image_url}
+                              alt={product.product_name}
+                              code={product.product_code}
+                              className="w-full h-full object-contain p-0.5 bg-white"
+                            />
+                            <label
+                              title="Upload actual picture for this product"
+                              className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/img:opacity-100 flex items-center justify-center text-white cursor-pointer transition-opacity"
+                            >
                               <Upload className="w-4 h-4" />
                               <input
                                 type="file"
@@ -614,8 +610,6 @@ export default function AdminProductsPage() {
                             {vatRateVal}%
                           </span>
                         </td>
-
-
 
                         {/* Status */}
                         <td className="py-4.5 px-6">
@@ -710,7 +704,7 @@ export default function AdminProductsPage() {
               <div className="space-y-1">
                 <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Product Description</label>
                 <textarea
-                  placeholder="e.g. Premium quality copper wire designed for high performance electrical installations..."
+                  placeholder="e.g. Premium quality product designed for high performance..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
@@ -762,7 +756,7 @@ export default function AdminProductsPage() {
                     value={selectedCatId}
                     onChange={(e) => {
                       setSelectedCatId(e.target.value ? Number(e.target.value) : "");
-                      setSelectedSubId(""); // Reset subcategory when category changes
+                      setSelectedSubId("");
                     }}
                     className="w-full py-2.5 px-3 border border-gray-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm font-sans"
                   >
@@ -773,7 +767,7 @@ export default function AdminProductsPage() {
                   </select>
                 </div>
 
-                {/* Subcategory Dropdown (dynamically filtered by parent category selection) */}
+                {/* Subcategory Dropdown */}
                 <div className="space-y-1">
                   <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Subcategory</label>
                   <select
@@ -790,79 +784,85 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
-              {/* Product Picture Selection */}
+              {/* Product Picture Upload */}
               <div className="space-y-1">
                 <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Product Picture</label>
                 <div className="flex items-center gap-4 p-3.5 border border-gray-200 rounded-2xl bg-slate-50 hover:bg-slate-100/50 transition-colors">
                   <div className="w-16 h-16 rounded-xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 relative group">
                     {imagePreviewUrl ? (
-                      <img src={imagePreviewUrl} alt="Preview" className="w-full h-full object-contain p-2 bg-white" />
+                      <ProductImage src={imagePreviewUrl} alt="Preview" className="w-full h-full object-contain p-2 bg-white" />
                     ) : (
-                      <ImageIcon className="w-6 h-6 text-slate-400" />
+                      <ImageIcon className="w-6 h-6 text-slate-300" />
                     )}
                   </div>
                   <div className="flex-1 space-y-1">
-                    <p className="text-xs text-slate-500 font-medium">
-                      {imageFile ? imageFile.name : (imagePreviewUrl ? "Existing product image loaded" : "No image selected")}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <label className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-slate-700 text-xs font-bold shadow-sm transition-all cursor-pointer">
-                        <Upload className="w-3.5 h-3.5" />
-                        Select Image
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleModalFileChange}
-                          className="hidden"
-                        />
-                      </label>
-                      {imagePreviewUrl && (
-                        <button
-                          type="button"
-                          onClick={handleRemoveImage}
-                          className="inline-flex items-center gap-1 py-1.5 px-3 rounded-xl border border-red-200 bg-white hover:bg-red-50 text-red-600 text-xs font-bold transition-all cursor-pointer"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
+                    <input
+                      type="file"
+                      id="modal-product-image"
+                      accept="image/*"
+                      onChange={handleModalFileChange}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="modal-product-image"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-700 bg-white border border-gray-300 hover:border-teal-600 px-3 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      {imageFile || imagePreviewUrl ? "Change Picture" : "Upload Picture"}
+                    </label>
+                    {(imageFile || imagePreviewUrl) && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="block text-[11px] text-rose-600 hover:underline font-semibold"
+                      >
+                        Remove Picture
+                      </button>
+                    )}
+                    <p className="text-[10px] text-slate-400 font-medium">Supports JPG, PNG, WEBP files up to 5MB</p>
                   </div>
                 </div>
               </div>
 
-              {/* Active check */}
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  id="active"
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 bg-white text-teal-600 focus:ring-teal-500"
-                />
-                <label htmlFor="active" className="text-sm font-semibold text-slate-700 cursor-pointer">
-                  Product is active and visible in catalog shop
+              {/* Active Toggle */}
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Item Status</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+                  <span className="ml-2 text-xs font-bold text-slate-800 font-mono">
+                    {isActive ? "Active" : "Inactive"}
+                  </span>
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+              {/* Submit Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="py-2 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 text-sm font-semibold text-slate-600 transition-colors cursor-pointer"
+                  className="py-2.5 px-4 rounded-xl border border-gray-300 text-slate-700 font-semibold text-xs hover:bg-gray-50 transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="inline-flex items-center gap-1.5 py-2 px-5 rounded-xl text-white bg-teal-600 hover:bg-teal-700 text-sm font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                  className="py-2.5 px-5 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2"
                 >
                   {isSaving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Saving...
+                    </>
                   ) : (
-                    <Check className="w-4 h-4" />
+                    "Save Product"
                   )}
-                  Save Product
                 </button>
               </div>
 
