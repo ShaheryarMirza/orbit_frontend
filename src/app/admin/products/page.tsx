@@ -113,7 +113,7 @@ export default function AdminProductsPage() {
     setError(null);
     try {
       const [productsRes, categoriesRes] = await Promise.all([
-        api.get("/products", { params: { page_size: 100000 } }),
+        api.get("/products", { params: { page_size: 100000, is_active: "all" } }),
         api.get("/api/categories")
       ]);
       setProducts(productsRes.data.items || []);
@@ -624,8 +624,8 @@ export default function AdminProductsPage() {
                               Active
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded bg-gray-100 text-slate-500 border border-gray-200">
-                              Disabled
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
+                              Inactive
                             </span>
                           )}
                         </td>

@@ -448,6 +448,9 @@ export default function AssistedOrderPage() {
                   const vatRateVal = product.vat_rate !== undefined ? product.vat_rate : 20.0;
                   const priceIncVat = priceNum * (1 + vatRateVal / 100);
 
+                  const cartItem = cartItems.find((i) => i.product.id === product.id);
+                  const addedQty = cartItem ? cartItem.quantity : 0;
+
                   return (
                     <div
                       key={product.id}
@@ -456,6 +459,12 @@ export default function AssistedOrderPage() {
                       <div>
                         {/* Fixed-Aspect-Ratio Image Container with Object-Contain */}
                         <div className="aspect-square bg-gray-50/80 flex items-center justify-center p-3 overflow-hidden border-b border-gray-100 relative">
+                          {addedQty > 0 && (
+                            <span className="absolute top-2 right-2 bg-teal-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 z-10 font-sans tracking-tight">
+                              <ShoppingCart className="w-3 h-3" />
+                              {addedQty} added
+                            </span>
+                          )}
                           {product.image_url ? (
                             <img
                               src={product.image_url.startsWith("http") ? product.image_url : (API_BASE_URL + product.image_url)}
@@ -533,6 +542,13 @@ export default function AssistedOrderPage() {
                               <Plus className="w-3 h-3" />
                             </button>
                           </div>
+
+                          {addedQty > 0 && (
+                            <div className="text-[10px] font-extrabold text-teal-700 bg-teal-50 border border-teal-200 rounded-lg py-1 px-2 text-center flex items-center justify-center gap-1 font-sans">
+                              <ShoppingBag className="w-3 h-3 text-teal-600" />
+                              <span>{addedQty} added</span>
+                            </div>
+                          )}
 
                           <button
                             type="button"
