@@ -24,18 +24,23 @@ export function formatImageUrl(src: string | null | undefined): string | null {
     return cleanSrc;
   }
 
-  // 2. Supabase Storage paths
+  // 2. Static uploads directory served directly by frontend CDN
+  if (cleanSrc.startsWith("/uploads/")) {
+    return cleanSrc;
+  }
+
+  // 3. Supabase Storage paths
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://iqwpwawpmndewyxmvpju.supabase.co";
   if (cleanSrc.startsWith("storage/v1")) {
     return `${supabaseUrl}/${cleanSrc}`;
   }
 
-  // 3. Backend relative path starting with /uploads or /static
-  if (cleanSrc.startsWith("/uploads") || cleanSrc.startsWith("/static")) {
+  // 4. Relative backend API paths
+  if (cleanSrc.startsWith("/static")) {
     return `${API_BASE_URL}${cleanSrc}`;
   }
 
-  // 4. Default fallback: Supabase Storage public bucket
+  // 5. Default fallback: Supabase Storage public bucket
   if (!cleanSrc.startsWith("/")) {
     return `${supabaseUrl}/storage/v1/object/public/products/${cleanSrc}`;
   }
