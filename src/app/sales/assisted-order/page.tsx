@@ -26,6 +26,8 @@ import {
   X
 } from "lucide-react";
 
+import { useCartStore, AssistedCartItem, Product } from "@/store/cartStore";
+
 interface Shop {
   id: number;
   company_name: string;
@@ -49,29 +51,29 @@ interface Category {
   subcategories: SubCategory[];
 }
 
-interface Product {
-  id: number;
-  category_id: number | null;
-  subcategory_id: number | null;
-  product_code: string;
-  product_name: string;
-  description: string | null;
-  image_url: string | null;
-  price: string | number;
-  vat_rate?: number;
-  quantity: number;
-  is_active: boolean;
-}
-
-interface AssistedCartItem {
-  product: Product;
-  quantity: number;
-  customPrice?: number | string;
-}
-
 export default function AssistedOrderPage() {
   const { user, isAuthenticated, initialize } = useAuthStore();
   const router = useRouter();
+
+  // Persistent Cart & Customer State from Zustand Store
+  const {
+    assistedItems: cartItems,
+    selectedShopId,
+    discountType,
+    discountValue,
+    customerReference,
+    internalNotes,
+    addAssistedItem,
+    removeAssistedItem,
+    updateAssistedQuantity,
+    updateAssistedCustomPrice,
+    setSelectedShopId,
+    setDiscountType,
+    setDiscountValue,
+    setCustomerReference,
+    setInternalNotes,
+    clearAssistedOrder,
+  } = useCartStore();
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [shops, setShops] = useState<Shop[]>([]);
@@ -86,14 +88,6 @@ export default function AssistedOrderPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategorySlug, setSelectedCategorySlug] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<{ [key: number]: number }>({});
-
-  // Checkout State
-  const [selectedShopId, setSelectedShopId] = useState<number | "">("");
-  const [cartItems, setCartItems] = useState<AssistedCartItem[]>([]);
-  const [discountType, setDiscountType] = useState<"fixed" | "percentage" | "">("");
-  const [discountValue, setDiscountValue] = useState<string>("");
-  const [customerReference, setCustomerReference] = useState("");
-  const [internalNotes, setInternalNotes] = useState("");
 
   // Cart Drawer State
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
@@ -158,41 +152,21 @@ export default function AssistedOrderPage() {
 
   const handleAddToCart = (product: Product) => {
     const qtyToAdd = quantities[product.id] || 1;
-    setCartItems((prev) => {
-      const existingIndex = prev.findIndex((item) => item.product.id === product.id);
-      if (existingIndex > -1) {
-        const updated = [...prev];
-        updated[existingIndex].quantity += qtyToAdd;
-        return updated;
-      }
-      return [...prev, { product, quantity: qtyToAdd }];
-    });
+    addAssistedItem(product, qtyToAdd);
     // Reset local selector qty
     setQuantities((prev) => ({ ...prev, [product.id]: 1 }));
   };
 
   const handleUpdateCartQty = (productId: number, newQty: number) => {
-    if (newQty <= 0) {
-      handleRemoveCartItem(productId);
-      return;
-    }
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity: newQty } : item
-      )
-    );
+    updateAssistedQuantity(productId, newQty);
   };
 
   const handleRemoveCartItem = (productId: number) => {
-    setCartItems((prev) => prev.filter((item) => item.product.id !== productId));
+    removeAssistedItem(productId);
   };
 
   const handleUpdateCartPrice = (productId: number, newPrice: string | number) => {
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, customPrice: newPrice } : item
-      )
-    );
+    updateAssistedCustomPrice(productId, newPrice);
   };
 
   const getEffectiveUnitPrice = (item: AssistedCartItem): number => {
@@ -284,12 +258,7 @@ export default function AssistedOrderPage() {
     try {
       const res = await api.post("/orders/assisted", payload);
       setSuccessMsg(`Assisted Order created successfully! Order Ref: ${res.data.order_number || `SO-${res.data.id}`}`);
-      setCartItems([]);
-      setCustomerReference("");
-      setInternalNotes("");
-      setDiscountType("");
-      setDiscountValue("");
-      setSelectedShopId("");
+      clearAssistedOrder();
       setIsCartDrawerOpen(false);
       setTimeout(() => {
         router.push("/orders");

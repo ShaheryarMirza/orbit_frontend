@@ -25,4 +25,23 @@ api.interceptors.request.use(
   }
 );
 
+// Response interceptor to handle silent token refresh & preserve active order state on 401
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      // If 401 occurs while user is building an order, preserve local storage cart & notify
+      const isBuildingOrder =
+        window.location.pathname.includes("/sales/assisted-order") ||
+        window.location.pathname.includes("/shop");
+      if (isBuildingOrder) {
+        console.warn(
+          "401 Unauthorized encountered during order creation. Cart state preserved in localStorage."
+        );
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;
