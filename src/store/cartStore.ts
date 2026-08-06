@@ -29,9 +29,11 @@ export interface AssistedCartItem {
 interface CartState {
   // Standard Shop Cart
   items: CartItem[];
+  customerShopReference: string;
   addItem: (product: Product, quantity: number) => void;
   removeItem: (productId: number) => void;
   updateQuantity: (productId: number, quantity: number) => void;
+  setCustomerShopReference: (ref: string) => void;
   clearCart: () => void;
   getSubtotal: () => number;
 
@@ -60,6 +62,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       // 1. Standard Shop Cart Implementation
       items: [],
+      customerShopReference: "",
 
       addItem: (product, quantity) => {
         set((state) => {
@@ -93,8 +96,12 @@ export const useCartStore = create<CartState>()(
         }));
       },
 
+      setCustomerShopReference: (ref) => {
+        set({ customerShopReference: ref });
+      },
+
       clearCart: () => {
-        set({ items: [] });
+        set({ items: [], customerShopReference: "" });
       },
 
       getSubtotal: () => {

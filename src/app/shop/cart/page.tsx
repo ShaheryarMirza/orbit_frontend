@@ -21,11 +21,10 @@ import {
 
 export default function CartPage() {
   const { user, isAuthenticated, initialize } = useAuthStore();
-  const { items, updateQuantity, removeItem, clearCart, getSubtotal } = useCartStore();
+  const { items, updateQuantity, removeItem, clearCart, getSubtotal, customerShopReference: customerReference, setCustomerShopReference: setCustomerReference } = useCartStore();
   const router = useRouter();
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [customerReference, setCustomerReference] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
