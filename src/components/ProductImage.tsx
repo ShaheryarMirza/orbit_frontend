@@ -24,9 +24,9 @@ export function formatImageUrl(src: string | null | undefined): string | null {
     return cleanSrc;
   }
 
-  // 2. Static uploads directory served directly by frontend CDN
+  // 2. Relative uploads directory -> point to API backend host
   if (cleanSrc.startsWith("/uploads/")) {
-    return cleanSrc;
+    return `${API_BASE_URL}${cleanSrc}`;
   }
 
   // 3. Supabase Storage paths
@@ -54,10 +54,13 @@ export default function ProductImage({
   className = "w-full h-full object-contain",
   code
 }: ProductImageProps) {
-  const [hasError, setHasError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const formattedUrl = formatImageUrl(src);
 
-  if (!formattedUrl || hasError) {
+  // If primary API URL fails, attempt fallback to relative frontend URL
+  const currentSrc = attempt === 0 ? formattedUrl : (src?.startsWith("/") ? src : null);
+
+  if (!currentSrc || attempt >= 2) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-gray-50 p-2">
         <ShoppingBag className="w-6 h-6 stroke-[1.5] text-slate-300" />
@@ -72,10 +75,10 @@ export default function ProductImage({
 
   return (
     <img
-      src={formattedUrl}
+      src={currentSrc}
       alt={alt}
       className={className}
-      onError={() => setHasError(true)}
+      onError={() => setAttempt((prev) => prev + 1)}
       loading="lazy"
     />
   );
