@@ -17,32 +17,48 @@ interface ProductImageProps {
  */
 export function formatImageUrl(src: string | null | undefined): string | null {
   if (!src || !src.trim()) return null;
-  const cleanSrc = src.trim();
+  let cleanSrc = src.trim();
 
-  // 1. Absolute external HTTP/HTTPS URLs
+  // Filter out invalid placeholder strings
+  if (["none", "null", "nan", "undefined"].includes(cleanSrc.toLowerCase())) {
+    return null;
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://iqwpwawpmndewyxmvpju.supabase.co";
+
+  // 1. Convert temporary Signed URLs to permanent Public URLs and strip expiration tokens
+  if (cleanSrc.includes(".supabase.co/storage/v1/object/sign/")) {
+    cleanSrc = cleanSrc.replace("/storage/v1/object/sign/", "/storage/v1/object/public/").split("?")[0];
+  }
+
+  // 2. Absolute external HTTP/HTTPS URLs
   if (cleanSrc.startsWith("http://") || cleanSrc.startsWith("https://")) {
+    if (cleanSrc.includes(".supabase.co")) {
+      return cleanSrc.split("?")[0];
+    }
     return cleanSrc;
   }
 
-  // 2. Relative uploads directory -> point to API backend host
+  // 3. Relative uploads directory -> point to API backend host
   if (cleanSrc.startsWith("/uploads/")) {
     return `${API_BASE_URL}${cleanSrc}`;
   }
 
-  // 3. Supabase Storage paths
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://iqwpwawpmndewyxmvpju.supabase.co";
+  // 4. Supabase Storage relative paths
   if (cleanSrc.startsWith("storage/v1")) {
-    return `${supabaseUrl}/${cleanSrc}`;
+    const relativePath = cleanSrc.replace("/storage/v1/object/sign/", "/storage/v1/object/public/").split("?")[0];
+    return `${supabaseUrl}/${relativePath}`;
   }
 
-  // 4. Relative backend API paths
+  // 5. Relative backend API paths
   if (cleanSrc.startsWith("/static")) {
     return `${API_BASE_URL}${cleanSrc}`;
   }
 
-  // 5. Default fallback: Supabase Storage public bucket
+  // 6. Default fallback: Supabase Storage public bucket
   if (!cleanSrc.startsWith("/")) {
-    return `${supabaseUrl}/storage/v1/object/public/products/${cleanSrc}`;
+    const filename = cleanSrc.split("?")[0];
+    return `${supabaseUrl}/storage/v1/object/public/products/${filename}`;
   }
 
   return `${API_BASE_URL}${cleanSrc}`;
