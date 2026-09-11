@@ -34,6 +34,10 @@ interface Order {
   discount_value: string | number | null;
   discount_amount: string | number;
   final_total: string | number;
+  grand_total?: string | number;
+  total_price?: string | number;
+  gross_total?: string | number;
+  total_vat?: string | number | null;
   status: "placed" | "cancelled";
   sage_sales_order_id: string | null;
   sage_sync_status: "pending" | "processing" | "synced" | "failed";
@@ -347,11 +351,10 @@ export default function SalesDashboard() {
                           hour: "2-digit",
                           minute: "2-digit"
                         });
-                        const totalVal = (order as any).total_price !== undefined
-                          ? (typeof (order as any).total_price === "string" ? parseFloat((order as any).total_price) : (order as any).total_price)
-                          : (order as any).gross_total !== undefined
-                          ? (typeof (order as any).gross_total === "string" ? parseFloat((order as any).gross_total) : (order as any).gross_total)
-                          : (typeof order.final_total === "string" ? parseFloat(order.final_total) : (order.final_total || 0)) + (typeof order.total_vat === "string" ? parseFloat(order.total_vat) : (order.total_vat || 0));
+                        const subtotalNum = typeof order.subtotal === "string" ? parseFloat(order.subtotal) : (Number(order.subtotal) || 0);
+                        const vatNum = typeof order.total_vat === "string" ? parseFloat(order.total_vat as string) : (Number(order.total_vat) || 0);
+                        const grandTotalRaw = order.grand_total ?? order.total_price ?? order.gross_total ?? (subtotalNum + vatNum);
+                        const totalVal = typeof grandTotalRaw === "string" ? parseFloat(grandTotalRaw) : (Number(grandTotalRaw) || 0);
 
                         return (
                           <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
