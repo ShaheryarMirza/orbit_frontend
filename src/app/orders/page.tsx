@@ -388,9 +388,11 @@ export default function OrderHistoryPage() {
                       hour: "2-digit",
                       minute: "2-digit"
                     });
-                    const finalTotalVal = typeof order.final_total === "string" 
-                      ? parseFloat(order.final_total) 
-                      : order.final_total;
+                    const grossTotalVal = (order as any).total_price !== undefined
+                      ? (typeof (order as any).total_price === "string" ? parseFloat((order as any).total_price) : (order as any).total_price)
+                      : (order as any).gross_total !== undefined
+                      ? (typeof (order as any).gross_total === "string" ? parseFloat((order as any).gross_total) : (order as any).gross_total)
+                      : (typeof order.final_total === "string" ? parseFloat(order.final_total) : (order.final_total || 0)) + (typeof order.total_vat === "string" ? parseFloat(order.total_vat) : (order.total_vat || 0));
 
                     return (
                       <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
@@ -473,9 +475,9 @@ export default function OrderHistoryPage() {
                           )}
                         </td>
 
-                        {/* Final Total */}
+                        {/* Final Total (Gross incl. VAT) */}
                         <td className="py-4.5 px-6 font-mono font-bold text-slate-905">
-                          £{finalTotalVal.toFixed(2)}
+                          £{grossTotalVal.toFixed(2)}
                         </td>
 
                         {/* Actions */}
