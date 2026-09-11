@@ -375,7 +375,7 @@ export default function OrderHistoryPage() {
                     {(user?.role === "admin" || user?.role === "root_admin") && <th className="py-4 px-6">Salesperson</th>}
                     <th className="py-4 px-6">Status</th>
                     <th className="py-4 px-6">Sage Sync Status</th>
-                    <th className="py-4 px-6">Final Total</th>
+                    <th className="py-4 px-6">Grand Total</th>
                     <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -388,7 +388,9 @@ export default function OrderHistoryPage() {
                       hour: "2-digit",
                       minute: "2-digit"
                     });
-                    const grossTotalVal = (order as any).total_price !== undefined
+                    const grossTotalVal = (order as any).grand_total !== undefined
+                      ? (typeof (order as any).grand_total === "string" ? parseFloat((order as any).grand_total) : (order as any).grand_total)
+                      : (order as any).total_price !== undefined
                       ? (typeof (order as any).total_price === "string" ? parseFloat((order as any).total_price) : (order as any).total_price)
                       : (order as any).gross_total !== undefined
                       ? (typeof (order as any).gross_total === "string" ? parseFloat((order as any).gross_total) : (order as any).gross_total)
@@ -475,7 +477,7 @@ export default function OrderHistoryPage() {
                           )}
                         </td>
 
-                        {/* Final Total (Gross incl. VAT) */}
+                        {/* Grand Total (Gross incl. VAT) */}
                         <td className="py-4.5 px-6 font-mono font-bold text-slate-905">
                           £{grossTotalVal.toFixed(2)}
                         </td>
