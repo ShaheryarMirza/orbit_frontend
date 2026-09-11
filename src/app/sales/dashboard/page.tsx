@@ -198,7 +198,7 @@ export default function SalesDashboard() {
                   {isLoading ? (
                     <span className="inline-block w-16 h-8 bg-gray-100 rounded animate-pulse" />
                   ) : (
-                    stats?.total_orders || 0
+                    stats?.placed_orders ?? stats?.total_orders ?? 0
                   )}
                 </h3>
               </div>
