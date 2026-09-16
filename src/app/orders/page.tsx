@@ -70,11 +70,16 @@ export default function OrderHistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter States
+  // Filter & Pagination States
   const [searchQuery, setSearchQuery] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Deletion States (Root Admin Only)
   const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
@@ -124,6 +129,7 @@ export default function OrderHistoryPage() {
       await api.delete(`/orders/${deletingOrder.id}`);
       setSuccessMsg(`Order ${deletingOrder.order_number || `#${deletingOrder.id}`} successfully deleted.`);
       setOrders((prev) => prev.filter((o) => o.id !== deletingOrder.id));
+      setTotalOrders((prev) => Math.max(0, prev - 1));
       setDeletingOrder(null);
     } catch (err: any) {
       console.error(err);
@@ -133,56 +139,53 @@ export default function OrderHistoryPage() {
     }
   };
 
-  // Derived filtered orders array
-  const filteredOrders = orders.filter((order) => {
-    // 1. Text filter (case-insensitive substring match against order_id, company_name, account_ref)
-    const query = searchQuery.toLowerCase().trim();
-    if (query) {
-      const orderIdStr = order.id.toString();
-      const orderNumStr = order.order_number?.toLowerCase() || "";
-      const companyName = order.shop?.company_name?.toLowerCase() || "";
-      const accountRef = order.shop?.account_ref?.toLowerCase() || order.account_ref?.toLowerCase() || "";
-      
-      const matchesText =
-        orderIdStr.includes(query) ||
-        orderNumStr.includes(query) ||
-        companyName.includes(query) ||
-        accountRef.includes(query);
-      if (!matchesText) return false;
-    }
+  // Fetch Orders from backend with server-side filtering & pagination
+  const fetchOrders = async (
+    page = currentPage,
+    limit = pageSize,
+    search = searchQuery,
+    status = statusFilter,
+    start = startDate,
+    end = endDate
+  ) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const params: any = {
+        page: page,
+        page_size: limit,
+      };
 
-    // 2. Date range filter
-    if (startDate || endDate) {
-      const orderDate = new Date(order.created_at);
-      const normalizedOrderDate = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
-
-      if (startDate) {
-        const start = new Date(startDate);
-        const normalizedStart = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-        if (normalizedOrderDate < normalizedStart) return false;
+      if (search.trim()) params.search = search.trim();
+      if (status !== "All") {
+        if (status === "Pending") params.sage_sync_status = "pending";
+        if (status === "Synced to Sage") params.sage_sync_status = "synced";
+        if (status === "Failed") params.sage_sync_status = "failed";
       }
-      if (endDate) {
-        const end = new Date(endDate);
-        const normalizedEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-        if (normalizedOrderDate > normalizedEnd) return false;
-      }
-    }
+      if (start) params.date_from = start;
+      if (end) params.date_to = end;
 
-    // 3. Status filter ('All', 'Pending', 'Synced to Sage', 'Failed')
-    if (statusFilter !== "All") {
-      if (statusFilter === "Pending" && order.sage_sync_status !== "pending") return false;
-      if (statusFilter === "Synced to Sage" && order.sage_sync_status !== "synced") return false;
-      if (statusFilter === "Failed" && order.sage_sync_status !== "failed") return false;
+      const res = await api.get("/orders", { params });
+      const fetchedItems = res.data.items || [];
+      setOrders(fetchedItems);
+      setTotalOrders(res.data.total ?? fetchedItems.length);
+      setTotalPages(res.data.pages ?? 1);
+      setCurrentPage(res.data.page ?? page);
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to fetch order history. Please check connection to server.");
+    } finally {
+      setIsLoading(false);
     }
-
-    return true;
-  });
+  };
 
   const handleClearFilters = () => {
     setSearchQuery("");
     setStartDate("");
     setEndDate("");
     setStatusFilter("All");
+    setCurrentPage(1);
+    fetchOrders(1, pageSize, "", "All", "", "");
   };
 
   // 1. Auth Guard
@@ -198,26 +201,10 @@ export default function OrderHistoryPage() {
     }
   }, [isCheckingAuth, isAuthenticated, router]);
 
-  // 2. Fetch Orders
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await api.get("/orders", {
-        params: { page_size: 100 }
-      });
-      setOrders(res.data.items || []);
-    } catch (err: any) {
-      console.error(err);
-      setError("Failed to fetch order history. Please check connection to server.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // 2. Fetch Orders on mount or parameter changes
   useEffect(() => {
     if (!isCheckingAuth && isAuthenticated) {
-      fetchOrders();
+      fetchOrders(1, pageSize);
     }
   }, [isCheckingAuth, isAuthenticated]);
 
@@ -245,7 +232,7 @@ export default function OrderHistoryPage() {
             </div>
           </div>
           <button
-            onClick={fetchOrders}
+            onClick={() => fetchOrders()}
             disabled={isLoading}
             className="flex items-center justify-center gap-2 text-sm font-semibold border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 py-2.5 px-4 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50 text-slate-700"
           >
@@ -273,7 +260,12 @@ export default function OrderHistoryPage() {
               type="text"
               placeholder="Search by Order ID, Company Name, or Account Ref..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearchQuery(val);
+                setCurrentPage(1);
+                fetchOrders(1, pageSize, val, statusFilter, startDate, endDate);
+              }}
               className="w-full pl-10 pr-3.5 py-2.5 border border-gray-300 bg-white placeholder-slate-400 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all text-sm font-sans"
             />
           </div>
@@ -285,7 +277,12 @@ export default function OrderHistoryPage() {
                 <input
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setStartDate(val);
+                    setCurrentPage(1);
+                    fetchOrders(1, pageSize, searchQuery, statusFilter, val, endDate);
+                  }}
                   className="rounded-xl border border-gray-300 bg-white text-slate-900 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-xs font-semibold w-full"
                   placeholder="Start Date"
                 />
@@ -295,8 +292,13 @@ export default function OrderHistoryPage() {
                 <input
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="rounded-xl border border-gray-300 bg-white text-slate-900 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-505 transition-all text-xs font-semibold w-full"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEndDate(val);
+                    setCurrentPage(1);
+                    fetchOrders(1, pageSize, searchQuery, statusFilter, startDate, val);
+                  }}
+                  className="rounded-xl border border-gray-300 bg-white text-slate-900 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-xs font-semibold w-full"
                   placeholder="End Date"
                 />
               </div>
@@ -305,7 +307,12 @@ export default function OrderHistoryPage() {
             <div className="w-full sm:w-auto relative">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setStatusFilter(val);
+                  setCurrentPage(1);
+                  fetchOrders(1, pageSize, searchQuery, val, startDate, endDate);
+                }}
                 className="appearance-none rounded-xl border border-gray-300 bg-white text-slate-800 py-2.5 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-xs font-bold cursor-pointer w-full"
               >
                 <option value="All">All Sync Statuses</option>
@@ -353,177 +360,249 @@ export default function OrderHistoryPage() {
                 </Link>
               )}
             </div>
-          ) : filteredOrders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center px-4 gap-4">
-              <FileSpreadsheet className="w-12 h-12 text-slate-300" />
-              <div>
-                <h3 className="text-lg font-bold text-slate-800">No Matching Orders Found</h3>
-                <p className="text-slate-500 text-sm max-w-md mt-1 font-medium leading-relaxed">
-                  No matching orders found for your current search criteria. Try clearing your filters.
-                </p>
-              </div>
-              <button
-                onClick={handleClearFilters}
-                className="inline-flex items-center gap-1.5 py-2.5 px-5 rounded-xl text-white bg-teal-600 hover:bg-teal-700 text-xs font-bold shadow-sm transition-all border-0 cursor-pointer"
-              >
-                Clear Filters
-              </button>
-            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
-                    <th className="py-4 px-6">Order Number</th>
-                    <th className="py-4 px-6">Date Placed</th>
-                    {(user?.role === "admin" || user?.role === "root_admin") && <th className="py-4 px-6">Salesperson</th>}
-                    <th className="py-4 px-6">Status</th>
-                    <th className="py-4 px-6">Sage Sync Status</th>
-                    <th className="py-4 px-6">Grand Total</th>
-                    <th className="py-4 px-6 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 text-sm">
-                  {filteredOrders.map((order) => {
-                    const formattedDate = new Date(order.created_at).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit"
-                    });
-                    const subtotalNum = typeof order.subtotal === "string" ? parseFloat(order.subtotal) : (Number(order.subtotal) || 0);
-                    const vatNum = typeof order.total_vat === "string" ? parseFloat(order.total_vat as string) : (Number(order.total_vat) || 0);
-                    const grandTotalRaw = order.grand_total ?? order.total_price ?? order.gross_total ?? (subtotalNum + vatNum);
-                    const grossTotalVal = typeof grandTotalRaw === "string" ? parseFloat(grandTotalRaw) : (Number(grandTotalRaw) || 0);
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                      <th className="py-4 px-6">Order Number</th>
+                      <th className="py-4 px-6">Registered Shop</th>
+                      <th className="py-4 px-6">Date Placed</th>
+                      {(user?.role === "admin" || user?.role === "root_admin") && <th className="py-4 px-6">Salesperson</th>}
+                      <th className="py-4 px-6">Status</th>
+                      <th className="py-4 px-6">Sage Sync Status</th>
+                      <th className="py-4 px-6">Grand Total</th>
+                      <th className="py-4 px-6 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-sm">
+                    {orders.map((order) => {
+                      const formattedDate = new Date(order.created_at).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      });
+                      const subtotalNum = typeof order.subtotal === "string" ? parseFloat(order.subtotal) : (Number(order.subtotal) || 0);
+                      const vatNum = typeof order.total_vat === "string" ? parseFloat(order.total_vat as string) : (Number(order.total_vat) || 0);
+                      const grandTotalRaw = order.grand_total ?? order.total_price ?? order.gross_total ?? (subtotalNum + vatNum);
+                      const grossTotalVal = typeof grandTotalRaw === "string" ? parseFloat(grandTotalRaw) : (Number(grandTotalRaw) || 0);
 
-                    return (
-                      <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
-                        
-                        {/* Order Number & Details */}
-                        <td className="py-4.5 px-6 font-semibold text-slate-900">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-teal-600">{order.order_number || `SO-PEND-${order.id}`}</span>
-                            {order.customer_reference && (
-                              <span className="text-[10px] bg-gray-100 text-slate-500 px-2 py-0.5 rounded font-mono border border-gray-200">
-                                Ref: {order.customer_reference}
-                              </span>
-                            )}
-                            {order.created_by_role === "salesperson" && (
-                              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded">
-                                <Briefcase className="w-2.5 h-2.5" />
-                                Assisted
-                              </span>
-                            )}
-                          </div>
-                        </td>
+                      return (
+                        <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
+                          
+                          {/* Order Number & Details */}
+                          <td className="py-4.5 px-6 font-semibold text-slate-900">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-teal-600">{order.order_number || `SO-PEND-${order.id}`}</span>
+                              {order.customer_reference && (
+                                <span className="text-[10px] bg-gray-100 text-slate-500 px-2 py-0.5 rounded font-mono border border-gray-200">
+                                  Ref: {order.customer_reference}
+                                </span>
+                              )}
+                              {order.created_by_role === "salesperson" && (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded">
+                                  <Briefcase className="w-2.5 h-2.5" />
+                                  Assisted
+                                </span>
+                              )}
+                            </div>
+                          </td>
 
-                        {/* Date */}
-                        <td className="py-4.5 px-6 text-slate-700">
-                          <div className="flex items-center gap-1.5 text-xs font-semibold">
-                            <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                            <span>{formattedDate}</span>
-                          </div>
-                        </td>
-
-                        {/* Salesperson (Admin only) */}
-                        {(user?.role === "admin" || user?.role === "root_admin") && (
-                          <td className="py-4.5 px-6 text-slate-700">
-                            {order.salesperson ? (
-                              <span className="text-xs text-indigo-700 font-bold">
-                                {order.salesperson.name}
-                              </span>
+                          {/* Registered Shop */}
+                          <td className="py-4.5 px-6 font-semibold text-slate-900">
+                            {order.shop ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-bold text-slate-900">{order.shop.company_name}</span>
+                                {(order.shop.account_ref || order.account_ref) && (
+                                  <span className="text-[10px] text-slate-400 font-mono">
+                                    Ref: {order.shop.account_ref || order.account_ref}
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-xs text-slate-400 italic">
-                                Direct Purchase
+                                {order.customer_reference ? `Ref: ${order.customer_reference}` : "N/A"}
                               </span>
                             )}
                           </td>
-                        )}
 
-                        {/* Order Status */}
-                        <td className="py-4.5 px-6">
-                          {order.status === "placed" ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Placed
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200">
-                              Cancelled
-                            </span>
-                          )}
-                        </td>
+                          {/* Date */}
+                          <td className="py-4.5 px-6 text-slate-700">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold">
+                              <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                              <span>{formattedDate}</span>
+                            </div>
+                          </td>
 
-                        {/* Sage Sync Status */}
-                        <td className="py-4.5 px-6">
-                          {order.sage_sync_status === "pending" && (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                              Pending
-                            </span>
+                          {/* Salesperson (Admin only) */}
+                          {(user?.role === "admin" || user?.role === "root_admin") && (
+                            <td className="py-4.5 px-6 text-slate-700">
+                              {order.salesperson ? (
+                                <span className="text-xs text-indigo-700 font-bold">
+                                  {order.salesperson.name}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">
+                                  Direct Purchase
+                                </span>
+                              )}
+                            </td>
                           )}
-                          {order.sage_sync_status === "processing" && (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                              Processing
-                            </span>
-                          )}
-                          {order.sage_sync_status === "synced" && (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Synced
-                            </span>
-                          )}
-                          {order.sage_sync_status === "failed" && (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200">
-                              Failed
-                            </span>
-                          )}
-                        </td>
 
-                        {/* Grand Total (Gross incl. VAT) */}
-                        <td className="py-4.5 px-6 font-mono font-bold text-slate-905">
-                          £{grossTotalVal.toFixed(2)}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="py-4.5 px-6 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Link
-                              href={`/orders/${order.id}`}
-                              className="inline-flex items-center justify-center gap-1 text-xs font-bold border border-gray-300 hover:border-teal-500/40 bg-white hover:bg-teal-50 hover:text-teal-600 py-1.5 px-3 rounded-lg transition-all cursor-pointer shadow-xs"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              View Details
-                            </Link>
-                            {isStaff && (
-                              <button
-                                onClick={() => handleDownloadPdf(order.id, order.order_number)}
-                                className="inline-flex items-center justify-center gap-1 text-xs font-bold border border-gray-300 hover:border-teal-500/40 bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-600 py-1.5 px-3 rounded-lg transition-all cursor-pointer shadow-xs"
-                                title="Download PDF Sales Order Invoice"
-                              >
-                                <Download className="w-3.5 h-3.5 text-teal-600" />
-                                PDF
-                              </button>
+                          {/* Order Status */}
+                          <td className="py-4.5 px-6">
+                            {order.status === "placed" ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Placed
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200">
+                                Cancelled
+                              </span>
                             )}
-                            {isRootAdmin && (order.sage_sync_status !== "synced" && (order.sage_sync_status as string) !== "completed") && (
-                              <button
-                                onClick={() => {
-                                  setDeleteError(null);
-                                  setDeletingOrder(order);
-                                }}
-                                className="inline-flex items-center justify-center p-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-gray-200 hover:border-rose-300 rounded-lg transition-all cursor-pointer shadow-xs"
-                                title="Delete Unsynced Order (Root Admin Only)"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                          </td>
 
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          {/* Sage Sync Status */}
+                          <td className="py-4.5 px-6">
+                            {order.sage_sync_status === "pending" && (
+                              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                Pending
+                              </span>
+                            )}
+                            {order.sage_sync_status === "processing" && (
+                              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                Processing
+                              </span>
+                            )}
+                            {order.sage_sync_status === "synced" && (
+                              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Synced
+                              </span>
+                            )}
+                            {order.sage_sync_status === "failed" && (
+                              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200">
+                                Failed
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Grand Total (Gross incl. VAT) */}
+                          <td className="py-4.5 px-6 font-mono font-bold text-slate-905">
+                            £{grossTotalVal.toFixed(2)}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-4.5 px-6 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Link
+                                href={`/orders/${order.id}`}
+                                className="inline-flex items-center justify-center gap-1 text-xs font-bold border border-gray-300 hover:border-teal-500/40 bg-white hover:bg-teal-50 hover:text-teal-600 py-1.5 px-3 rounded-lg transition-all cursor-pointer shadow-xs"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                View Details
+                              </Link>
+                              {isStaff && (
+                                <button
+                                  onClick={() => handleDownloadPdf(order.id, order.order_number)}
+                                  className="inline-flex items-center justify-center gap-1 text-xs font-bold border border-gray-300 hover:border-teal-500/40 bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-600 py-1.5 px-3 rounded-lg transition-all cursor-pointer shadow-xs"
+                                  title="Download PDF Sales Order Invoice"
+                                >
+                                  <Download className="w-3.5 h-3.5 text-teal-600" />
+                                  PDF
+                                </button>
+                              )}
+                              {isRootAdmin && (order.sage_sync_status !== "synced" && (order.sage_sync_status as string) !== "completed") && (
+                                <button
+                                  onClick={() => {
+                                    setDeleteError(null);
+                                    setDeletingOrder(order);
+                                  }}
+                                  className="inline-flex items-center justify-center p-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-gray-200 hover:border-rose-300 rounded-lg transition-all cursor-pointer shadow-xs"
+                                  title="Delete Unsynced Order (Root Admin Only)"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls Footer */}
+              {totalOrders > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-6 border-t border-gray-200 bg-white">
+                  <div className="text-xs text-slate-500 font-medium">
+                    Showing <span className="font-bold text-slate-900">{Math.min((currentPage - 1) * pageSize + 1, totalOrders)}</span> to{" "}
+                    <span className="font-bold text-slate-900">{Math.min(currentPage * pageSize, totalOrders)}</span> of{" "}
+                    <span className="font-bold text-slate-900">{totalOrders}</span> orders
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <span>Show per page:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          const newSize = Number(e.target.value);
+                          setPageSize(newSize);
+                          setCurrentPage(1);
+                          fetchOrders(1, newSize);
+                        }}
+                        className="bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
+                      >
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                        <option value={250}>250</option>
+                        <option value={500}>500</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          if (currentPage > 1) {
+                            const prevPage = currentPage - 1;
+                            setCurrentPage(prevPage);
+                            fetchOrders(prevPage);
+                          }
+                        }}
+                        disabled={currentPage <= 1 || isLoading}
+                        className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-semibold text-slate-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                      >
+                        Previous
+                      </button>
+
+                      <span className="text-xs font-bold text-slate-700 px-2">
+                        Page {currentPage} of {totalPages}
+                      </span>
+
+                      <button
+                        onClick={() => {
+                          if (currentPage < totalPages) {
+                            const nextPage = currentPage + 1;
+                            setCurrentPage(nextPage);
+                            fetchOrders(nextPage);
+                          }
+                        }}
+                        disabled={currentPage >= totalPages || isLoading}
+                        className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-semibold text-slate-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
