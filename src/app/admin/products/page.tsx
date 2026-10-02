@@ -220,11 +220,7 @@ export default function AdminProductsPage() {
       if (imageFile) {
         const formData = new FormData();
         formData.append("file", imageFile);
-        await api.post(`/products/${savedProduct.id}/image`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data"
-          }
-        });
+        await api.post(`/products/${savedProduct.id}/image`, formData);
       }
 
       setIsFormOpen(false);
@@ -265,11 +261,7 @@ export default function AdminProductsPage() {
     setIsUploading(true);
     setError(null);
     try {
-      await api.post(`/products/${productId}/image`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data"
-        }
-      });
+      await api.post(`/products/${productId}/image`, formData);
       showSuccess("Product image uploaded successfully!");
       loadData();
     } catch (err: any) {
@@ -295,11 +287,7 @@ export default function AdminProductsPage() {
     formData.append("file", file);
 
     try {
-      const res = await api.post("/products/import", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const res = await api.post("/products/import", formData);
 
       setImportSummary({
         created: res.data.created,
