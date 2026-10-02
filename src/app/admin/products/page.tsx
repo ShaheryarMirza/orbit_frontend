@@ -83,6 +83,7 @@ export default function AdminProductsPage() {
   const [isActive, setIsActive] = useState(true);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [imageRemoved, setImageRemoved] = useState(false);
 
   // Image Upload state
   const [uploadingProductId, setUploadingProductId] = useState<number | null>(null);
@@ -152,6 +153,7 @@ export default function AdminProductsPage() {
     setIsActive(true);
     setImageFile(null);
     setImagePreviewUrl("");
+    setImageRemoved(false);
     setIsFormOpen(true);
   };
 
@@ -169,6 +171,7 @@ export default function AdminProductsPage() {
     setIsActive(product.is_active);
     setImageFile(null);
     setImagePreviewUrl(product.image_url || "");
+    setImageRemoved(false);
     setIsFormOpen(true);
   };
 
@@ -178,11 +181,13 @@ export default function AdminProductsPage() {
     const file = files[0];
     setImageFile(file);
     setImagePreviewUrl(URL.createObjectURL(file));
+    setImageRemoved(false);
   };
 
   const handleRemoveImage = () => {
     setImageFile(null);
     setImagePreviewUrl("");
+    setImageRemoved(true);
   };
 
   // 4. Save Product (Create or Edit)
@@ -216,11 +221,13 @@ export default function AdminProductsPage() {
         showSuccess("Product updated successfully!");
       }
 
-      // Upload image if selected in the modal
+      // Upload image if selected in the modal, or delete if removed
       if (imageFile) {
         const formData = new FormData();
         formData.append("file", imageFile);
         await api.post(`/products/${savedProduct.id}/image`, formData);
+      } else if (imageRemoved && savedProduct.id) {
+        await api.delete(`/products/${savedProduct.id}/image`);
       }
 
       setIsFormOpen(false);
