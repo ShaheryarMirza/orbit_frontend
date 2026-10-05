@@ -14,8 +14,8 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   login: (token: string, user: User) => void;
-  logout: () => void;
-  initialize: () => void;
+  logout: () => Promise<void>;
+  initialize: () => Promise<void>;
 }
 
 let refreshInterval: NodeJS.Timeout | null = null;
@@ -28,9 +28,8 @@ const startKeepAlive = () => {
       const token = localStorage.getItem("token");
       if (token) {
         try {
-          // Import api dynamically to avoid circular dependencies
           const { default: api } = await import("@/lib/api");
-          await api.get("/settings/profile");
+          await api.get("/auth/me");
         } catch (err) {
           console.warn("Silent auth keep-alive refresh attempt:", err);
         }
@@ -46,7 +45,7 @@ const stopKeepAlive = () => {
   }
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
   isAuthenticated: false,
@@ -58,30 +57,61 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ token, user, isAuthenticated: true });
     startKeepAlive();
   },
-  logout: () => {
+  logout: async () => {
     stopKeepAlive();
     if (typeof window !== "undefined") {
+      try {
+        const { default: api } = await import("@/lib/api");
+        await api.post("/auth/logout");
+      } catch (err) {
+        console.warn("Server logout request failed:", err);
+      }
       localStorage.removeItem("token");
       localStorage.removeItem("user");
     }
     set({ token: null, user: null, isAuthenticated: false });
   },
-  initialize: () => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("token");
-      const userStr = localStorage.getItem("user");
-      if (token && userStr) {
-        try {
-          const user = JSON.parse(userStr);
-          set({ token, user, isAuthenticated: true });
-          startKeepAlive();
-        } catch {
-          // If stored JSON is corrupt, clean up localStorage
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          set({ token: null, user: null, isAuthenticated: false });
-        }
+  initialize: async () => {
+    if (typeof window === "undefined") return;
+
+    const storedToken = localStorage.getItem("token");
+    const userStr = localStorage.getItem("user");
+
+    // Fast-path: Set state immediately if local storage cache exists
+    if (storedToken && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        set({ token: storedToken, user, isAuthenticated: true });
+        startKeepAlive();
+      } catch {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+    }
+
+    // Silent refresh attempt via HttpOnly cookie to restore or refresh active session
+    try {
+      const { default: api } = await import("@/lib/api");
+      const refreshRes = await api.post("/auth/refresh");
+      const newAccessToken = refreshRes.data.access_token;
+
+      if (newAccessToken) {
+        localStorage.setItem("token", newAccessToken);
+        const meRes = await api.get("/auth/me");
+        const freshUser = meRes.data;
+
+        localStorage.setItem("user", JSON.stringify(freshUser));
+        set({ token: newAccessToken, user: freshUser, isAuthenticated: true });
+        startKeepAlive();
+      }
+    } catch {
+      // If refresh fails and there was no valid stored local user, clear auth state
+      if (!localStorage.getItem("user")) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        set({ token: null, user: null, isAuthenticated: false });
       }
     }
   },
 }));
+
