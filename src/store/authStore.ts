@@ -104,14 +104,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ token: newAccessToken, user: freshUser, isAuthenticated: true });
         startKeepAlive();
       }
-    } catch {
-      // If refresh fails and there was no valid stored local user, clear auth state
-      if (!localStorage.getItem("user")) {
+    } catch (err: any) {
+      // Only clear auth state if backend explicitly returned 401 or 403 (token truly expired/invalid).
+      // Network errors, server restarts, or offline glitches will NOT log the user out.
+      const isExplicitAuthFailure =
+        err.response?.status === 401 ||
+        err.response?.status === 403;
+
+      if (isExplicitAuthFailure) {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         set({ token: null, user: null, isAuthenticated: false });
+      } else {
+        console.warn(
+          "Initial silent session refresh encountered a network issue. Preserving active session:",
+          err.message || err
+        );
       }
     }
   },
 }));
+
 
