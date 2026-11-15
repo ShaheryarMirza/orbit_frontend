@@ -27,6 +27,7 @@ CLAUDE.md
 *.sw?
 *.suo
 *.sln
+*.bak
 
 # OS metadata
 .DS_Store

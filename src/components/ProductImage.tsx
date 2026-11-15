@@ -13,7 +13,7 @@ interface ProductImageProps {
 
 /**
  * Utility function to generate the correct public URL for product images.
- * Handles external URLs, Supabase Storage paths, and local API backend paths.
+ * Handles local static paths, external URLs, and Supabase Storage paths.
  */
 export function formatImageUrl(src: string | null | undefined): string | null {
   if (!src || !src.trim()) return null;
@@ -39,9 +39,9 @@ export function formatImageUrl(src: string | null | undefined): string | null {
     return cleanSrc;
   }
 
-  // 3. Relative uploads directory -> point to API backend host
+  // 3. Relative uploads directory -> serve directly from frontend static CDN
   if (cleanSrc.startsWith("/uploads/")) {
-    return `${API_BASE_URL}${cleanSrc}`;
+    return cleanSrc;
   }
 
   // 4. Supabase Storage relative paths
@@ -55,13 +55,13 @@ export function formatImageUrl(src: string | null | undefined): string | null {
     return `${API_BASE_URL}${cleanSrc}`;
   }
 
-  // 6. Default fallback: Supabase Storage public bucket
+  // 6. Default fallback: relative filename
   if (!cleanSrc.startsWith("/")) {
     const filename = cleanSrc.split("?")[0];
-    return `${supabaseUrl}/storage/v1/object/public/products/${filename}`;
+    return `/uploads/products/${filename}`;
   }
 
-  return `${API_BASE_URL}${cleanSrc}`;
+  return cleanSrc;
 }
 
 export default function ProductImage({
@@ -71,12 +71,43 @@ export default function ProductImage({
   code
 }: ProductImageProps) {
   const [attempt, setAttempt] = useState(0);
-  const formattedUrl = formatImageUrl(src);
 
-  // If primary API URL fails, attempt fallback to relative frontend URL
-  const currentSrc = attempt === 0 ? formattedUrl : (src?.startsWith("/") ? src : null);
+  // Build ordered list of candidate URLs to try
+  const candidates: string[] = [];
 
-  if (!currentSrc || attempt >= 2) {
+  // 1. Direct local upload path if present
+  if (src && src.startsWith("/uploads/")) {
+    candidates.push(src);
+    candidates.push(`${API_BASE_URL}${src}`);
+  }
+
+  // 2. Local frontend product image by SKU code
+  if (code) {
+    const cleanCode = code.trim();
+    candidates.push(`/uploads/products/prod_${cleanCode}.jpg`);
+    candidates.push(`/uploads/products/prod_${cleanCode}.jpeg`);
+    candidates.push(`/uploads/products/prod_${cleanCode}.png`);
+  }
+
+  // 3. Formatted external / static URLs (excluding dead Supabase)
+  if (src && !src.includes(".supabase.co") && !src.startsWith("/uploads/")) {
+    const formatted = formatImageUrl(src);
+    if (formatted && !candidates.includes(formatted)) {
+      candidates.push(formatted);
+    }
+  }
+
+  // 4. Supabase URL as last resort (if quota is restored in future)
+  if (src && src.includes(".supabase.co")) {
+    const formatted = formatImageUrl(src);
+    if (formatted && !candidates.includes(formatted)) {
+      candidates.push(formatted);
+    }
+  }
+
+  const currentSrc = attempt < candidates.length ? candidates[attempt] : null;
+
+  if (!currentSrc) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-gray-50 p-2">
         <ShoppingBag className="w-6 h-6 stroke-[1.5] text-slate-300" />
