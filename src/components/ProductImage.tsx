@@ -75,34 +75,30 @@ export default function ProductImage({
   // Build ordered list of candidate URLs to try
   const candidates: string[] = [];
 
-  // 1. Direct local upload path if present
-  if (src && src.startsWith("/uploads/")) {
-    candidates.push(src);
-    candidates.push(`${API_BASE_URL}${src}`);
+  // 1. PRIMARY: The actual configured product image URL (Supabase cloud, custom upload, or external)
+  // This is what admins and workers upload, so it MUST take highest priority!
+  const formatted = formatImageUrl(src);
+  if (formatted) {
+    candidates.push(formatted);
   }
 
-  // 2. Local frontend product image by SKU code
+  // 2. Relative uploads if specified explicitly in database -> try backend host too
+  if (src && src.startsWith("/uploads/")) {
+    const backendUrl = `${API_BASE_URL}${src}`;
+    if (!candidates.includes(backendUrl)) {
+      candidates.push(backendUrl);
+    }
+  }
+
+  // 3. FALLBACK: Only if the primary image is missing or fails to load, fall back to static local SKU catalog files
   if (code) {
     const cleanCode = code.trim();
-    candidates.push(`/uploads/products/prod_${cleanCode}.jpg`);
-    candidates.push(`/uploads/products/prod_${cleanCode}.jpeg`);
-    candidates.push(`/uploads/products/prod_${cleanCode}.png`);
-  }
-
-  // 3. Formatted external / static URLs (excluding dead Supabase)
-  if (src && !src.includes(".supabase.co") && !src.startsWith("/uploads/")) {
-    const formatted = formatImageUrl(src);
-    if (formatted && !candidates.includes(formatted)) {
-      candidates.push(formatted);
-    }
-  }
-
-  // 4. Supabase URL as last resort (if quota is restored in future)
-  if (src && src.includes(".supabase.co")) {
-    const formatted = formatImageUrl(src);
-    if (formatted && !candidates.includes(formatted)) {
-      candidates.push(formatted);
-    }
+    const c1 = `/uploads/products/prod_${cleanCode}.jpg`;
+    const c2 = `/uploads/products/prod_${cleanCode}.jpeg`;
+    const c3 = `/uploads/products/prod_${cleanCode}.png`;
+    if (!candidates.includes(c1)) candidates.push(c1);
+    if (!candidates.includes(c2)) candidates.push(c2);
+    if (!candidates.includes(c3)) candidates.push(c3);
   }
 
   const currentSrc = attempt < candidates.length ? candidates[attempt] : null;
