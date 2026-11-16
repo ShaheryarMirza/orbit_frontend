@@ -46,6 +46,8 @@ interface Order {
   total_vat?: string | number | null;
   status: "placed" | "cancelled";
   sage_sales_order_id: string | null;
+  sage_order_number?: string | null;
+  sync_notes?: string | null;
   sage_sync_status: "pending" | "processing" | "synced" | "failed";
   created_at: string;
   salesperson: Salesperson | null;
@@ -478,14 +480,28 @@ export default function OrderHistoryPage() {
                               </span>
                             )}
                             {order.sage_sync_status === "synced" && (
-                              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                Synced
-                              </span>
+                              <div>
+                                <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Synced
+                                </span>
+                                {order.sage_order_number && (
+                                  <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+                                    Sage Ref: {order.sage_order_number}
+                                  </span>
+                                )}
+                              </div>
                             )}
                             {order.sage_sync_status === "failed" && (
-                              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200">
-                                Failed
-                              </span>
+                              <div title={order.sync_notes || "Sync failed"}>
+                                <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200">
+                                  Failed
+                                </span>
+                                {order.sync_notes && (
+                                  <span className="text-[10px] text-rose-600 block mt-0.5 max-w-[140px] truncate">
+                                    {order.sync_notes}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </td>
 
